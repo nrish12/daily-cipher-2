@@ -299,45 +299,39 @@ export default function CipherGame() {
   };
 
   const generateAllPuzzles = async () => {
-    if (!confirm('Generate ALL 3 puzzles (person, place, thing)?')) return;
+    if (!confirm('Generate ALL 3 NEW puzzles (person, place, thing)?')) return;
 
     setGeneratingPuzzles(true);
-    showFeedbackMsg('Generating all puzzles with AI...', 'info');
-
-    const categories = ['person', 'place', 'thing'];
-    const today = new Date().toISOString().split('T')[0];
+    showFeedbackMsg('Deleting old puzzles and generating new ones with AI...', 'info');
 
     try {
-      // Delete existing puzzles for today
-      await fetch(`${SUPABASE_URL}/rest/v1/mysteries?date=eq.${today}`, {
-        method: 'DELETE',
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': `${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          action: 'regenerate-all',
+          userId: gameState.userId,
+        }),
       });
 
-      // Generate all 3 categories
-      for (const category of categories) {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-mystery`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            category,
-            userId: gameState.userId,
-          }),
-        });
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ All puzzles regenerated:', result);
+        setReadyCategories(['person', 'place', 'thing']);
+        showFeedbackMsg(`✅ All ${result.generated} puzzles generated! Select a category.`, 'success');
 
-        if (response.ok) {
-          setReadyCategories(prev => [...prev, category]);
-          showFeedbackMsg(`${category} puzzle generated!`, 'success');
-        }
+        // Refresh after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        const error = await response.text();
+        console.error('Generate error:', error);
+        showFeedbackMsg('Error generating puzzles', 'error');
       }
-
-      showFeedbackMsg('All puzzles ready! Select a category.', 'success');
     } catch (error) {
       console.error('Error generating puzzles:', error);
       showFeedbackMsg('Error generating puzzles', 'error');

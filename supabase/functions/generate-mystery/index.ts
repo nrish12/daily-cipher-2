@@ -41,11 +41,13 @@ Make puzzles HARDER by:
   const prompt = `You are an expert puzzle designer creating clever, fair mystery games.${adaptiveInstructions}
 
 CRITICAL RULES:
-1. Choose subjects that 60-70% of educated adults would know
+1. Choose subjects that 50-60% of educated adults would know (moderately challenging)
 2. Generate EXACTLY 8 clues that progressively reveal the answer
 3. NEVER use the most famous/iconic fact about the subject
-4. Use concrete, verifiable facts - NOT vague metaphors
-5. Answer must be 1-4 words maximum
+4. Clues 1-5 should be CRYPTIC and require thinking/research
+5. Clues 6-8 can be more direct but still require deduction
+6. Answer must be 1-4 words maximum
+7. Make early clues challenging but ALWAYS fair and truthful
 
 CATEGORY DEFINITIONS - ULTRA STRICT - NO EDGE CASES:
 
@@ -79,34 +81,47 @@ BANNED PHRASES (never use these iconic facts):
 - Shakespeare: "to be or not to be"
 - Any instantly recognizable catchphrase
 
+DIFFICULTY LEVEL: CHALLENGING BUT FAIR
+Make players THINK and RESEARCH. Early clues should require deduction.
+
 CLUE PROGRESSION (8 clues for ${category}):
-Clue 1: Time period OR geographic region (indirect)
-  Example: "Active during Europe's industrial transformation" NOT "lived in 1800s"
+Clue 1: Extremely vague era/context (requires thinking)
+  Example: "Emerged during a time of industrial change and social upheaval" NOT "lived in the 1800s"
+  Make it cryptic - don't give away century
 
-Clue 2: Professional field OR medium (cryptic)
-  Example: "Worked with pigment and canvas under southern sun" NOT "was a painter"
+Clue 2: Indirect field reference (metaphorical)
+  Example: "Manipulated perception through visual composition" NOT "was a painter"
+  Use metaphors, avoid direct job titles
 
-Clue 3: Cultural impact (vague but concrete)
-  Example: "Influenced a generation of artists who followed" NOT "changed art forever"
+Clue 3: Abstract legacy (philosophical)
+  Example: "Left behind work that challenged conventional boundaries" NOT "influenced artists"
+  Keep it broad and conceptual
 
-Clue 4: Associated location OR context (specific but not obvious)
-  Example: "Spent significant time in Provence asylum" NOT "lived in Arles"
+Clue 4: Obscure association (requires knowledge)
+  Example: "Connected to a southern French institution for the troubled" NOT "was in an asylum"
+  Use indirect references
 
-Clue 5: Working style OR method (concrete detail)
-  Example: "Applied paint thickly, sometimes directly from tube" NOT "used impasto"
+Clue 5: Technical detail (for knowledgeable players)
+  Example: "Employed techniques involving thick application and bold color choices" NOT "used thick paint"
+  Describe without naming the technique
 
-Clue 6: Related achievement (lesser-known)
-  Example: "Created over 900 paintings in just 10 years" NOT "painted Starry Night"
+Clue 6: Lesser-known fact (surprising detail)
+  Example: "Produced an extraordinary volume of work in under a decade" NOT "created 900 paintings"
+  Share unusual facts that aren't the famous ones
 
-Clue 7: Personal detail (specific but requires deduction)
-  Example: "Brother Theo financially supported his career" NOT "was poor"
+Clue 7: Relationship clue (inferential)
+  Example: "Relied on family support from a sibling in the art trade" NOT "brother Theo supported him"
+  Make connections subtle
 
-Clue 8: Final strong hint (very specific, almost there)
-  Example: "Dutch post-impressionist who worked in France" NOT "painted sunflowers"
+Clue 8: Strong hint (nationality + field + era)
+  Example: "Northern European creative who worked extensively in southern France" NOT "Dutch post-impressionist"
+  Give solid direction but still require thinking
+
+CRITICAL: Make clues 1-5 HARD. Only clues 6-8 should be more direct.
 
 GOOD vs BAD EXAMPLES:
-BAD: "Prismatic transformation" "lived in blue" "lost an ear"
-GOOD: "Moved to southern France in 1888" "hospitalized in Saint-Rémy" "brother was art dealer"
+BAD (too easy): "lost an ear" "painted in France" "was a Dutch painter"
+GOOD (right level): "experienced personal tragedy affecting their physical form" "relocated to Mediterranean climate" "originated from Low Countries"
 
 Return ONLY valid JSON:
 {
@@ -128,14 +143,14 @@ Return ONLY valid JSON:
       messages: [
         {
           role: "system",
-          content: "You are a mystery puzzle generator. Respond only with valid JSON, no markdown, no explanations."
+          content: "You are a mystery puzzle generator creating CHALLENGING but FAIR puzzles. Make early clues cryptic. Respond only with valid JSON, no markdown, no explanations."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.8,
+      temperature: 0.9,
     }),
   });
 

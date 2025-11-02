@@ -84,6 +84,8 @@ export default function CipherGame() {
     }
 
     console.log('🚀 Starting game with category:', gameState.selectedCategory);
+    showFeedbackMsg('Loading mystery...', 'info');
+    setGeneratingPuzzles(true);
 
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
@@ -124,6 +126,8 @@ export default function CipherGame() {
     } catch (error) {
       console.error('❌ Error starting game:', error);
       showFeedbackMsg('Error loading mystery. Check console.', 'error');
+    } finally {
+      setGeneratingPuzzles(false);
     }
   };
 

@@ -207,6 +207,28 @@ Deno.serve(async (req: Request) => {
       throw new Error('Answer too long (max 4 words)');
     }
 
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data: existing } = await supabase
+      .from("mysteries")
+      .select("*")
+      .eq("date", today)
+      .eq("category", mystery.category)
+      .maybeSingle();
+
+    if (existing) {
+      console.log(`⚠️ Mystery already exists for ${mystery.category} on ${today}, returning existing one`);
+      return new Response(
+        JSON.stringify(existing),
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
     const { data: inserted, error: insertError } = await supabase
       .from("mysteries")
       .insert({
@@ -215,12 +237,35 @@ Deno.serve(async (req: Request) => {
         answer: mystery.answer,
         clues: mystery.clues,
         fun_fact: mystery.funFact,
-        date: new Date().toISOString().split("T")[0],
+        date: today,
       })
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      if (insertError.code === '23505') {
+        console.log(`⚠️ Race condition detected, fetching existing mystery`);
+        const { data: raceExisting } = await supabase
+          .from("mysteries")
+          .select("*")
+          .eq("date", today)
+          .eq("category", mystery.category)
+          .single();
+
+        if (raceExisting) {
+          return new Response(
+            JSON.stringify(raceExisting),
+            {
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
+      }
+      throw insertError;
+    }
 
     return new Response(
       JSON.stringify(inserted),

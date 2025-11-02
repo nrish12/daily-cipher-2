@@ -50,25 +50,27 @@ CRITICAL RULES:
 CATEGORY DEFINITIONS - ULTRA STRICT - NO EDGE CASES:
 
 PERSON: Historical figures, celebrities, scientists, artists
-  ✅ ALLOWED: Einstein, Shakespeare, Cleopatra, Mozart, Beyoncé, Tesla (Nikola), Da Vinci
+  ✅ ALLOWED: Scientists, musicians, painters, actors, inventors, historical leaders, athletes
   ❌ NEVER: Groups (Beatles), fictional characters, brands named after people
+  🎲 IMPORTANT: Pick someone UNIQUE and DIFFERENT each time - avoid repeating subjects
 
 PLACE: Bodies of water, deserts, forests, plains ONLY
-  ✅ ALLOWED: Amazon River, Sahara Desert, Great Barrier Reef, Pacific Ocean, Mississippi River
+  ✅ ALLOWED: Rivers, oceans, seas, lakes, deserts, forests, plains, reefs, valleys
   ❌ NEVER:
-    - Volcanoes (Mount Vesuvius, Mount Fuji) → These are THINGS
-    - Mountains (Mount Everest, Alps) → These are THINGS
-    - Cities (Paris, Tokyo) → Too broad
-    - Countries (USA, France) → Too broad
-    - Man-made (Eiffel Tower, Pyramids) → These are THINGS
+    - Volcanoes → THING
+    - Mountains → THING
+    - Cities, countries → Too broad
+    - Man-made structures → THING
+  🎲 IMPORTANT: Pick a UNIQUE location each time - be creative
 
 THING: Physical objects you can touch or see
   ✅ ALLOWED:
-    - Inventions: iPhone, Light Bulb, Airplane, Telescope
-    - Structures: Eiffel Tower, Pyramids, Statue of Liberty, Golden Gate Bridge
-    - Art: Mona Lisa, David Statue, Starry Night
-    - Natural formations: Mount Everest, Mount Vesuvius, Grand Canyon
+    - Inventions (modern/historical devices, vehicles, tools)
+    - Structures (towers, bridges, buildings, monuments, landmarks)
+    - Art (famous paintings, sculptures)
+    - Natural formations (mountains, volcanoes, canyons, caves)
   ❌ NEVER: Concepts, emotions, events, abstract ideas
+  🎲 IMPORTANT: Pick something UNIQUE each time - be creative and varied
 
 BANNED PHRASES (never use these iconic facts):
 - Van Gogh: "cut his ear", "lost an ear", "ear incident"

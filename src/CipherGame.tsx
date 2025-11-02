@@ -132,32 +132,64 @@ export default function CipherGame() {
     if (!guess) return;
 
     console.log('🎯 Submitting guess:', guess);
-    showFeedbackMsg('Checking your answer with AI...', 'info');
+
+    // FAST CLIENT-SIDE CHECK FIRST (instant!)
+    const normalizedGuess = guess.toLowerCase().trim();
+    const normalizedAnswer = gameState.currentAnswer?.toLowerCase().trim() || '';
+
+    let isCorrect = false;
+    let needsAI = true;
+
+    // Exact match (instant)
+    if (normalizedGuess === normalizedAnswer) {
+      isCorrect = true;
+      needsAI = false;
+      console.log('✅ Fast path: Exact match!');
+    }
+    // Answer contains guess (e.g., "Einstein" matches "Albert Einstein")
+    else if (normalizedAnswer.includes(normalizedGuess) && normalizedGuess.length > 3) {
+      isCorrect = true;
+      needsAI = false;
+      console.log('✅ Fast path: Answer contains guess');
+    }
+    // Guess contains answer
+    else if (normalizedGuess.includes(normalizedAnswer) && normalizedAnswer.length > 3) {
+      isCorrect = true;
+      needsAI = false;
+      console.log('✅ Fast path: Guess contains answer');
+    }
+
+    // Only call AI for edge cases
+    if (needsAI) {
+      showFeedbackMsg('Checking with AI...', 'info');
+    }
 
     try {
-      // Use AI to validate the guess
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/validate-guess`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guess,
-          answer: gameState.currentAnswer,
-          clues: gameState.cluesRevealed,
-          mysteryId: gameState.mysteryId,
-          userId: gameState.userId,
-          attemptNumber: gameState.attempts + 1,
-          timeElapsed: gameState.startTime ? Date.now() - gameState.startTime : 0,
-        }),
-      });
+      // Call AI only if needed
+      if (needsAI) {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/validate-guess`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            guess,
+            answer: gameState.currentAnswer,
+            clues: gameState.cluesRevealed,
+            mysteryId: gameState.mysteryId,
+            userId: gameState.userId,
+            attemptNumber: gameState.attempts + 1,
+            timeElapsed: gameState.startTime ? Date.now() - gameState.startTime : 0,
+          }),
+        });
 
-      const result = await response.json();
-      const isCorrect = result.correct;
+        const result = await response.json();
+        isCorrect = result.correct;
+        console.log('AI Validation result:', result);
+      }
 
-      console.log('AI Validation result:', result);
-
+      // Update game state
       setGameState(prev => ({
         ...prev,
         attempts: prev.attempts + 1,

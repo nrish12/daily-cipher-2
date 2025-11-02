@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cipher Hunt - Daily Mystery Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 CIPHER HUNT</h1>
+            <p class="tagline">Think fast. Guess smart. Beat the clock.</p>
+            <div class="puzzle-type" id="puzzleType">Daily Challenge</div>
+        </header>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="start-screen">
+            <h2>Choose Your Mystery Type</h2>
+            <p>You get <strong>3 clues</strong> to start. Each wrong guess reveals another clue.<br>
+            Solve it in <strong>6 attempts</strong> or less!</p>
+            
+            <div id="categorySelection" class="category-selection">
+                <button class="category-btn" id="categoryPerson">
+                    <span class="category-icon">👤</span>
+                    <span class="category-name">PERSON</span>
+                    <span class="category-desc">Famous people & historical figures</span>
+                </button>
+                <button class="category-btn" id="categoryPlace">
+                    <span class="category-icon">📍</span>
+                    <span class="category-name">PLACE</span>
+                    <span class="category-desc">Landmarks, cities & locations</span>
+                </button>
+                <button class="category-btn" id="categoryThing">
+                    <span class="category-icon">💎</span>
+                    <span class="category-name">THING</span>
+                    <span class="category-desc">Objects, inventions & concepts</span>
+                </button>
+            </div>
+            
+            <button class="start-button" id="startButton" disabled style="opacity: 0.5;">START HUNT</button>
+            <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9em;">Select a category above to begin</p>
+        </div>
+
+        <!-- Game Layout -->
+        <div id="gameLayout" class="game-layout hidden">
+            <!-- Main Game Area -->
+            <div id="gameArea">
+                <div class="game-info">
+                    <div class="info-card category">
+                        <span class="label">Category</span>
+                        <span class="value" id="category">LOADING</span>
+                    </div>
+                    <div class="info-card">
+                        <span class="label">Difficulty</span>
+                        <span class="value" id="difficulty">MEDIUM</span>
+                    </div>
+                    <div class="info-card">
+                        <span class="label">Score</span>
+                        <span class="value" id="score">1000</span>
+                    </div>
+                </div>
+
+                <!-- Attempt Tracker -->
+                <div class="attempt-tracker">
+                    <div id="attemptIndicators"></div>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 25px; color: var(--text-muted); font-size: 1.1em;">
+                    <strong style="color: var(--primary); font-size: 1.3em;" id="attemptsLeft">6</strong> attempts remaining
+                </div>
+
+                <div class="clues-section">
+                    <div class="clues-header">
+                        <h2>Clues</h2>
+                    </div>
+                    
+                    <div id="cluesList" class="clues-list"></div>
+                </div>
+
+                <!-- Guess History -->
+                <div class="guess-history" id="guessHistory" style="display: none;">
+                    <h3>Your Guesses</h3>
+                    <div id="guessHistoryList"></div>
+                </div>
+
+                <div class="hint-panel">
+                    <button class="hint-btn" id="hintReveal" title="Reveal next clue (1 hint)">
+                        💡 Reveal Clue (1)
+                    </button>
+                    <button class="hint-btn" id="hintCategory" title="Confirm category (2 hints)">
+                        🎯 Confirm Category (2)
+                    </button>
+                    <button class="hint-btn" id="hintStats" title="Show solve rate (1 hint)">
+                        📊 Solve Rate (1)
+                    </button>
+                </div>
+
+                <div class="guess-section">
+                    <input 
+                        type="text" 
+                        id="guessInput" 
+                        placeholder="Type your answer..." 
+                        disabled
+                        maxlength="50"
+                    />
+                    <button id="guessButton" disabled>SUBMIT</button>
+                    <button id="revealButton" class="secondary">Give Up</button>
+                </div>
+
+                <div id="feedback" class="feedback"></div>
+            </div>
+
+            <!-- Stats Sidebar -->
+            <div class="stats-sidebar">
+                <div class="user-stats-bar">
+                    <h3>Your Stats</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">
+                            <span class="stat-icon">💡</span>
+                            Hints
+                        </span>
+                        <span class="stat-value" id="userHints">3</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">
+                            <span class="stat-icon">🔥</span>
+                            Streak
+                        </span>
+                        <span class="stat-value" id="userStreak">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">
+                            <span class="stat-icon">🎭</span>
+                            Style
+                        </span>
+                        <span class="stat-value" id="cognitiveStyle" style="font-size: 0.9em;">New Detective</span>
+                    </div>
+                </div>
+
+                <div class="live-feed">
+                    <div class="feed-header">
+                        <span class="pulse-indicator"></span>
+                        <span>LIVE ACTIVITY</span>
+                    </div>
+                    <div class="feed-content" id="feedContent">
+                        <p class="feed-item">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="resultArea" class="result-area hidden">
+            <div class="result-card">
+                <div class="result-header">
+                    <h2 id="resultTitle">🎉 Solved!</h2>
+                    <div class="final-score">
+                        <span class="score-label">Final Score</span>
+                        <span class="score-value" id="finalScore">0</span>
+                    </div>
+                </div>
+
+                <div class="answer-reveal">
+                    <span class="answer-label">Answer</span>
+                    <h1 id="answerText">---</h1>
+                </div>
+
+                <div class="share-grid">
+                    <h3 style="margin-bottom: 15px; color: var(--text);">Your Result</h3>
+                    <pre id="shareGrid"></pre>
+                </div>
+
+                <div class="new-badges" id="newBadges" style="display: none; margin: 25px 0; padding: 25px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 179, 8, 0.15)); border-radius: 15px; border: 2px solid var(--warning);">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: var(--warning);">🏆 Badge Earned!</h3>
+                    <div class="badge-showcase" id="badgeShowcase" style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;"></div>
+                </div>
+
+                <div style="margin: 30px 0; padding: 30px; background: var(--bg-elevated); border-radius: 15px;">
+                    <h3 style="margin-bottom: 20px; font-size: 1.3em;">📊 How You Compare</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div style="text-align: center; padding: 20px; background: var(--bg-card); border-radius: 12px; border: 2px solid var(--border);">
+                            <div style="font-size: 2.5em; font-weight: 900; color: var(--primary);" id="totalSolvers">0</div>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 8px; text-transform: uppercase;">Players Solved</div>
+                        </div>
+                        <div style="text-align: center; padding: 20px; background: var(--bg-card); border-radius: 12px; border: 2px solid var(--border);">
+                            <div style="font-size: 2.5em; font-weight: 900; color: var(--primary);" id="yourRank">--</div>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 8px; text-transform: uppercase;">Your Rank</div>
+                        </div>
+                        <div style="text-align: center; padding: 20px; background: var(--bg-card); border-radius: 12px; border: 2px solid var(--border);">
+                            <div style="font-size: 2.5em; font-weight: 900; color: var(--primary);" id="commonPath">--</div>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 8px; text-transform: uppercase;">Most Common</div>
+                        </div>
+                    </div>
+                    <div id="pathComparison"></div>
+                </div>
+
+                <div style="margin: 25px 0; padding: 25px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15)); border-radius: 15px; border-left: 4px solid var(--primary);">
+                    <h3 style="margin-bottom: 12px; color: var(--primary);">💡 Did you know?</h3>
+                    <p id="funFactText" style="line-height: 1.7; color: var(--text);">---</p>
+                </div>
+
+                <div style="margin: 25px 0;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2em;">All Clues</h3>
+                    <ol id="allCluesList" style="padding-left: 25px; line-height: 1.8;"></ol>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button id="shareButton" style="background: var(--primary); color: white; width: 100%; margin-bottom: 15px;">📋 COPY RESULT</button>
+                    <button id="viewProfile" style="background: var(--secondary); color: white; width: 100%;">👤 VIEW PROFILE</button>
+                    <p style="margin-top: 20px; color: var(--text-muted);">Next mystery in: <span id="nextTimer" style="color: var(--primary); font-weight: 700;">--:--:--</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Modal -->
+        <div id="profileModal" class="modal hidden" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85);">
+            <div style="background: var(--bg-card); border-radius: 20px; padding: 40px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; margin: 30px auto; border: 2px solid var(--border); position: relative;">
+                <span id="closeProfile" style="position: absolute; top: 20px; right: 25px; font-size: 2em; color: var(--text-muted); cursor: pointer;">&times;</span>
+                <h2 style="margin-bottom: 30px; font-size: 2em;">Your Detective Profile</h2>
+                
+                <div style="margin-bottom: 30px; text-align: center;">
+                    <h3 style="margin-bottom: 15px; color: var(--primary);">🎭 Cognitive Style</h3>
+                    <div id="styleDisplay" style="display: inline-block; padding: 15px 35px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 30px; font-size: 1.4em; font-weight: 800;">New Detective</div>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <h3 style="margin-bottom: 20px; color: var(--primary);">📈 Statistics</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                        <div style="background: var(--bg-elevated); padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">GAMES</div>
+                            <div style="font-size: 2em; font-weight: 800; color: var(--primary);" id="profileGames">0</div>
+                        </div>
+                        <div style="background: var(--bg-elevated); padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">SOLVES</div>
+                            <div style="font-size: 2em; font-weight: 800; color: var(--primary);" id="profileSolves">0</div>
+                        </div>
+                        <div style="background: var(--bg-elevated); padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">STREAK</div>
+                            <div style="font-size: 2em; font-weight: 800; color: var(--primary);" id="profileStreak">0</div>
+                        </div>
+                        <div style="background: var(--bg-elevated); padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">AVG CLUES</div>
+                            <div style="font-size: 2em; font-weight: 800; color: var(--primary);" id="profileAvgClues">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom: 20px; color: var(--primary);">🏆 Achievements</h3>
+                    <div id="achievementsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9em;">
+            <p style="margin-bottom: 15px;">Choose your mystery type • Play unlimited times</p>
+            <div style="margin-bottom: 20px;">
+                <span id="apiStatus">🤖 Checking...</span>
+            </div>
+            
+            <div class="dev-tools" style="margin-top: 30px; padding-top: 25px; border-top: 1px solid var(--border);">
+                <button id="devToggle" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 10px 20px; font-size: 0.9em;">🛠️ Dev Tools</button>
+                <div id="devPanel" class="hidden" style="background: var(--bg-card); border: 2px solid var(--border); border-radius: 15px; padding: 25px; margin-top: 20px; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto;">
+                    <h3 style="margin-bottom: 20px; color: var(--primary); font-size: 1.2em;">Developer Controls</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px;">
+                        <button id="resetGame" style="background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); padding: 12px; font-size: 0.9em;">🔄 Reset Game</button>
+                        <button id="newPuzzle" style="background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); padding: 12px; font-size: 0.9em;">✨ New Puzzle</button>
+                        <button id="revealAllClues" style="background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); padding: 12px; font-size: 0.9em;">👁️ Reveal All</button>
+                        <button id="addHints" style="background: var(--success); color: white; padding: 12px; font-size: 0.9em;">💡 Add 5 Hints</button>
+                    </div>
+                    <div style="background: var(--bg-elevated); padding: 20px; border-radius: 10px; font-size: 0.9em;">
+                        <p style="margin: 8px 0; color: var(--text-muted);"><strong style="color: var(--text);">Answer:</strong> <span id="devAnswer">Hidden</span></p>
+                        <p style="margin: 8px 0; color: var(--text-muted);"><strong style="color: var(--text);">Attempts:</strong> <span id="devAttempts">0 / 6</span></p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

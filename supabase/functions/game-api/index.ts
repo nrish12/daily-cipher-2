@@ -1,0 +1,110 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { category, userId, action, today: todayParam } = await req.json();
+
+    if (!category) {
+      throw new Error("Category is required");
+    }
+
+    const today = todayParam || new Date().toISOString().split("T")[0];
+
+    if (action === "regenerate") {
+      console.log(`🔄 Regenerating ${category} mystery...`);
+
+      const { error: deleteError } = await supabase
+        .from("mysteries")
+        .delete()
+        .eq("date", today)
+        .eq("category", category);
+
+      if (deleteError) {
+        console.error("Delete error:", deleteError);
+      } else {
+        console.log(`✅ Deleted old ${category} mystery for ${today}`);
+      }
+    } else {
+      console.log(`Looking for ${category} mystery for ${today}`);
+
+      const { data: existingMystery } = await supabase
+        .from("mysteries")
+        .select("*")
+        .eq("date", today)
+        .eq("category", category)
+        .maybeSingle();
+
+      if (existingMystery) {
+        console.log(`✅ Found existing ${category} mystery:`, existingMystery.answer);
+        return new Response(
+          JSON.stringify(existingMystery),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+
+    console.log(`No existing mystery found, generating new ${category} mystery...`);
+
+    const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-mystery`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ category, userId }),
+    });
+
+    if (!generateResponse.ok) {
+      const errorText = await generateResponse.text();
+      throw new Error(`Failed to generate mystery: ${errorText}`);
+    }
+
+    const newMystery = await generateResponse.json();
+    console.log(`✅ Generated new ${category} mystery:`, newMystery.answer);
+
+    return new Response(
+      JSON.stringify(newMystery),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+});

@@ -1,0 +1,257 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
+
+async function validateGuessWithAI(guess: string, answer: string, clues: string[]) {
+  const quickCheck = smartFallbackValidation(guess, answer);
+
+  if (quickCheck.confidence >= 95) {
+    console.log("Fast path validation:", quickCheck.reasoning);
+    return quickCheck;
+  }
+
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+
+  if (!openaiKey) {
+    return quickCheck;
+  }
+
+  const prompt = `You are validating a player's guess in a mystery guessing game.
+
+The correct answer is: "${answer}"
+The player guessed: "${guess}"
+Context clues revealed: ${clues.slice(0, 3).join(", ")}
+
+Determine if the player's guess is correct. Consider:
+- Exact matches (case insensitive)
+- Common variations/nicknames (e.g., "Beatles" vs "The Beatles")
+- Reasonable interpretations (e.g., "Einstein" for "Albert Einstein")
+- Minor typos or spelling errors (1-2 character difference)
+- Partial matches if the core name is correct
+
+Respond with ONLY a JSON object:
+{
+  "correct": true or false,
+  "confidence": 0-100,
+  "reasoning": "Brief explanation"
+}`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a fair and intelligent game judge. Be generous with partial matches and common variations. Respond only with valid JSON."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("OpenAI API error, falling back");
+      return smartFallbackValidation(guess, answer);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const result = JSON.parse(jsonStr);
+
+    console.log("AI Validation:", result);
+    return result;
+  } catch (error) {
+    console.error("AI validation failed:", error);
+    return smartFallbackValidation(guess, answer);
+  }
+}
+
+function smartFallbackValidation(guess: string, answer: string) {
+  const normalizedGuess = guess.toLowerCase().trim();
+  const normalizedAnswer = answer.toLowerCase().trim();
+
+  let correct = false;
+  let reasoning = "";
+
+  if (normalizedGuess === normalizedAnswer) {
+    correct = true;
+    reasoning = "Exact match";
+  } else if (normalizedAnswer.includes(normalizedGuess) && normalizedGuess.length > 3) {
+    correct = true;
+    reasoning = "Answer contains guess";
+  } else if (normalizedGuess.includes(normalizedAnswer) && normalizedAnswer.length > 3) {
+    correct = true;
+    reasoning = "Guess contains answer";
+  } else {
+    const words1 = normalizedGuess.split(/\s+/);
+    const words2 = normalizedAnswer.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w) && w.length > 2);
+
+    if (commonWords.length > 0 && commonWords.length >= Math.min(words1.length, words2.length) * 0.6) {
+      correct = true;
+      reasoning = "Significant word overlap";
+    }
+  }
+
+  return {
+    correct,
+    confidence: correct ? 85 : 95,
+    reasoning: correct ? reasoning : "Does not match"
+  };
+}
+
+async function recordGuessAnalytics(supabase: any, data: any) {
+  const { mysteryId, userId, guess, isCorrect, cluesSeen, attemptNumber, timeElapsed } = data;
+
+  try {
+    await supabase.from("user_guesses").insert({
+      user_id: userId,
+      mystery_id: mysteryId,
+      guess_text: guess,
+      is_correct: isCorrect,
+      clues_seen_count: cluesSeen.length,
+      clues_seen: cluesSeen,
+      attempt_number: attemptNumber,
+      time_elapsed_ms: timeElapsed
+    });
+
+    const { data: analytics } = await supabase
+      .from("mystery_analytics")
+      .select("*")
+      .eq("mystery_id", mysteryId)
+      .maybeSingle();
+
+    if (analytics) {
+      const newAttempts = analytics.total_attempts + 1;
+      const newSolves = analytics.total_solves + (isCorrect ? 1 : 0);
+      const solveRate = (newSolves / newAttempts) * 100;
+
+      await supabase
+        .from("mystery_analytics")
+        .update({
+          total_attempts: newAttempts,
+          total_solves: newSolves,
+          solve_rate: solveRate,
+          updated_at: new Date().toISOString()
+        })
+        .eq("mystery_id", mysteryId);
+    } else {
+      await supabase.from("mystery_analytics").insert({
+        mystery_id: mysteryId,
+        total_attempts: 1,
+        total_solves: isCorrect ? 1 : 0,
+        solve_rate: isCorrect ? 100 : 0
+      });
+    }
+
+    for (let i = 0; i < cluesSeen.length; i++) {
+      const { data: clueData } = await supabase
+        .from("clue_effectiveness")
+        .select("*")
+        .eq("mystery_id", mysteryId)
+        .eq("clue_index", i)
+        .maybeSingle();
+
+      if (clueData) {
+        await supabase
+          .from("clue_effectiveness")
+          .update({
+            times_revealed: clueData.times_revealed + 1,
+            led_to_solve: clueData.led_to_solve + (isCorrect && i === cluesSeen.length - 1 ? 1 : 0)
+          })
+          .eq("id", clueData.id);
+      } else {
+        await supabase.from("clue_effectiveness").insert({
+          mystery_id: mysteryId,
+          clue_index: i,
+          clue_text: cluesSeen[i],
+          times_revealed: 1,
+          led_to_solve: isCorrect && i === cluesSeen.length - 1 ? 1 : 0
+        });
+      }
+    }
+
+    console.log("✅ Analytics recorded successfully");
+  } catch (error) {
+    console.error("❌ Error recording analytics:", error);
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { guess, answer, clues, mysteryId, userId, attemptNumber, timeElapsed } = await req.json();
+
+    if (!guess || !answer) {
+      throw new Error("Guess and answer are required");
+    }
+
+    const validation = await validateGuessWithAI(guess, answer, clues || []);
+
+    if (mysteryId && userId) {
+      await recordGuessAnalytics(supabase, {
+        mysteryId,
+        userId,
+        guess,
+        isCorrect: validation.correct,
+        cluesSeen: clues || [],
+        attemptNumber: attemptNumber || 1,
+        timeElapsed: timeElapsed || 0
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        correct: validation.correct,
+        confidence: validation.confidence,
+        reasoning: validation.reasoning,
+        guess,
+        answer
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+});

@@ -27,12 +27,16 @@ The correct answer is: "${answer}"
 The player guessed: "${guess}"
 Context clues revealed: ${clues.slice(0, 3).join(", ")}
 
-Determine if the player's guess is correct. Consider:
+Determine if the player's guess is correct. Be VERY GENEROUS with accepting answers. Consider:
 - Exact matches (case insensitive)
 - Common variations/nicknames (e.g., "Beatles" vs "The Beatles")
 - Reasonable interpretations (e.g., "Einstein" for "Albert Einstein")
-- Minor typos or spelling errors (1-2 character difference)
-- Partial matches if the core name is correct
+- Spelling errors and typos (up to 2-3 character differences, missing letters, double letters, etc.)
+  Examples: "hubbel" = "hubble", "einstien" = "einstein", "van gough" = "van gogh"
+- Partial matches if the core name is correct (e.g., "telescope" for "Hubble Telescope" is WRONG, but "hubble" alone is CORRECT)
+- Phonetic similarities (sounds the same)
+
+Be generous and accept the answer if it's CLEARLY what the player meant, even with spelling mistakes.
 
 Respond with ONLY a JSON object:
 {
@@ -82,6 +86,34 @@ Respond with ONLY a JSON object:
   }
 }
 
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
 function smartFallbackValidation(guess: string, answer: string) {
   const normalizedGuess = guess.toLowerCase().trim();
   const normalizedAnswer = answer.toLowerCase().trim();
@@ -89,29 +121,59 @@ function smartFallbackValidation(guess: string, answer: string) {
   let correct = false;
   let reasoning = "";
 
+  // Exact match
   if (normalizedGuess === normalizedAnswer) {
     correct = true;
     reasoning = "Exact match";
-  } else if (normalizedAnswer.includes(normalizedGuess) && normalizedGuess.length > 3) {
+  }
+  // Answer contains guess (e.g., "Curie" for "Marie Curie")
+  else if (normalizedAnswer.includes(normalizedGuess) && normalizedGuess.length > 3) {
     correct = true;
     reasoning = "Answer contains guess";
-  } else if (normalizedGuess.includes(normalizedAnswer) && normalizedAnswer.length > 3) {
+  }
+  // Guess contains answer (e.g., "Marie Curie was a scientist" for "Marie Curie")
+  else if (normalizedGuess.includes(normalizedAnswer) && normalizedAnswer.length > 3) {
     correct = true;
     reasoning = "Guess contains answer";
-  } else {
-    const words1 = normalizedGuess.split(/\s+/);
-    const words2 = normalizedAnswer.split(/\s+/);
-    const commonWords = words1.filter(w => words2.includes(w) && w.length > 2);
+  }
+  // Check for spelling errors using Levenshtein distance
+  else {
+    const distance = levenshteinDistance(normalizedGuess, normalizedAnswer);
+    const maxLength = Math.max(normalizedGuess.length, normalizedAnswer.length);
+    const similarity = 1 - (distance / maxLength);
 
-    if (commonWords.length > 0 && commonWords.length >= Math.min(words1.length, words2.length) * 0.6) {
+    // Accept if 80% similar (allows for 2-3 typos)
+    if (similarity >= 0.80) {
       correct = true;
-      reasoning = "Significant word overlap";
+      reasoning = `Close spelling match (${Math.round(similarity * 100)}% similar)`;
+    }
+    // Check word overlap for multi-word answers
+    else {
+      const words1 = normalizedGuess.split(/\s+/);
+      const words2 = normalizedAnswer.split(/\s+/);
+
+      // Check if key words match (with spelling tolerance)
+      const matchingWords = words1.filter(w1 =>
+        words2.some(w2 => {
+          if (w1 === w2) return true;
+          if (w1.length > 3 && w2.length > 3) {
+            const dist = levenshteinDistance(w1, w2);
+            return dist <= 2; // Allow 2 character difference per word
+          }
+          return false;
+        })
+      );
+
+      if (matchingWords.length > 0 && matchingWords.length >= Math.min(words1.length, words2.length) * 0.6) {
+        correct = true;
+        reasoning = "Significant word overlap with spelling tolerance";
+      }
     }
   }
 
   return {
     correct,
-    confidence: correct ? 85 : 95,
+    confidence: correct ? 90 : 95,
     reasoning: correct ? reasoning : "Does not match"
   };
 }

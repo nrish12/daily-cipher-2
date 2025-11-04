@@ -38,110 +38,138 @@ Make puzzles HARDER by:
     }
   }
 
-  const prompt = `You are an expert puzzle designer creating FUN and FAIR mystery games.${adaptiveInstructions}
+  const prompt = `You are an expert puzzle designer creating clever, fair mystery games.${adaptiveInstructions}
 
-CRITICAL RULES:
-1. Choose subjects that 60-75% of educated adults would know (MEDIUM difficulty)
+CRITICAL RULES - READ CAREFULLY:
+1. Choose subjects that 50-60% of educated adults would know
 2. Generate EXACTLY 8 clues that progressively reveal the answer
-3. NEVER use the most famous/iconic fact about the subject in early clues
-4. Clues should be clever but FAIR - require thinking but not deep research
-5. Clues 1-3 should be indirect but solvable, clues 4-6 more helpful, clues 7-8 clear
-6. Answer must be 1-4 words maximum
-7. Choose interesting subjects - not too obvious, but not obscure
-8. BANNED: Einstein, Freud, Eiffel Tower, Great Barrier Reef, Mona Lisa, Beatles, Shakespeare
+3. Use CONCRETE, VERIFIABLE FACTS - NOT vague metaphors or poetry
+4. Each clue must provide REAL information, not flowery language
+5. Answer must be 1-4 words maximum
+6. Make clues challenging but ALWAYS fair and factual
 
-CATEGORY DEFINITIONS - ULTRA STRICT - NO EDGE CASES:
+FORBIDDEN CLUE STYLES (DO NOT USE THESE):
+❌ "fluid serpentine dance" → Instead: "Flows 692 miles through Montana and Wyoming"
+❌ "transformative power" → Instead: "Carved a canyon 1,000 feet deep"
+❌ "liquid highway" → Instead: "Major tributary of the Missouri River"
+❌ "enduring testament" → Instead: "Established trade route since 1800s"
+❌ Metaphors about "journeys", "dances", "testaments"
+❌ Phrases like "could be likened to", "might be described as"
+❌ Vague philosophical statements
 
-PERSON: Historical figures, celebrities, scientists, artists (MEDIUM difficulty)
-  ✅ ALLOWED: Well-known but not overly famous people - think second tier celebrities, notable historical figures
-  ❌ NEVER:
-    - Groups (Beatles), fictional characters, brands named after people
-    - Top 20 most famous: Einstein, Freud, Tesla, Edison, Da Vinci, Picasso, Mozart, Shakespeare
-    - Extremely obscure people nobody has heard of
-  🎲 IMPORTANT: Pick recognizable people that educated adults would know or could deduce
+REQUIRED CLUE STYLE:
+✓ Use specific numbers, dates, measurements
+✓ Name actual places, people, events
+✓ State concrete facts that can be verified
+✓ Be direct, not poetic
+✓ Give real information, not descriptions of what it's "like"
 
-PLACE: Bodies of water, deserts, forests, plains ONLY (MEDIUM difficulty)
-  ✅ ALLOWED: Well-known natural places - famous rivers, seas, deserts, forests that people learn about in school
-  ❌ NEVER:
-    - Volcanoes → THING
-    - Mountains → THING
-    - Cities, countries → Too broad
-    - Man-made structures → THING
-    - Top 10 most famous: Great Barrier Reef, Amazon Rainforest, Sahara, Pacific Ocean, Grand Canyon, Nile, Atlantic
-  🎲 IMPORTANT: Pick natural locations that are recognizable but not the first ones everyone thinks of
+CATEGORY DEFINITIONS - ULTRA STRICT:
 
-THING: Physical objects you can touch or see (MEDIUM difficulty)
-  ✅ ALLOWED:
-    - Famous inventions, well-known structures, notable artworks
-    - Historical artifacts people would recognize
-    - Specific natural formations that are recognizable
-    - Famous landmarks (but not the top 10 most famous)
-  ❌ NEVER:
-    - Concepts, emotions, events, abstract ideas
-    - Top 10 most famous: Eiffel Tower, Statue of Liberty, Great Wall, Taj Mahal, Mona Lisa
-    - Extremely obscure objects
-  🎲 IMPORTANT: Pick recognizable physical objects that educated adults would know
+PERSON: Historical figures, celebrities, scientists, artists, athletes, leaders
+  ✅ ALLOWED: Individual human beings only
+  ❌ NEVER: Groups, bands, fictional characters, brands
 
-BANNED PHRASES (never use these iconic facts):
-- Van Gogh: "cut his ear", "lost an ear", "ear incident"
-- Einstein: "tongue out", "stuck tongue", "E=mc²" (too early in clues)
-- Mona Lisa: "no eyebrows"
-- Shakespeare: "to be or not to be"
-- Any instantly recognizable catchphrase
+PLACE: Natural geographic features ONLY
+  ✅ ALLOWED: Rivers, oceans, seas, lakes, deserts, forests, valleys, reefs, canyons, plateaus
+  ✅ ALSO ALLOWED: Mountains, volcanoes, islands, glaciers, waterfalls
+  ❌ NEVER: Cities, countries, buildings, man-made structures
 
-DIFFICULTY LEVEL: MEDIUM - FUN BUT CHALLENGING
-Make players THINK but keep it FUN. Early clues should be indirect but clever, not impossible.
-Players should be able to guess after clue 4-5 if they're knowledgeable, or clue 6-7 if they need more help.
+THING: Physical objects, structures, artworks, inventions
+  ✅ ALLOWED: Buildings, towers, bridges, monuments, vehicles, devices, paintings, sculptures
+  ❌ NEVER: Abstract concepts, emotions, events
 
-CLUE PROGRESSION (8 clues for ${category}):
-Clue 1: Vague but fair era/context
-  Example: "Emerged during a century of industrial revolution and social change" NOT "lived in the 1800s"
-  Make it indirect but still a real clue that narrows things down
+CLUE PROGRESSION FORMULA for ${category}:
 
-Clue 2: Indirect field reference (metaphorical)
-  Example: "Manipulated perception through visual composition" NOT "was a painter"
-  Use metaphors, avoid direct job titles
+Clue 1: Time period or era (factual, not metaphorical)
+  ❌ BAD: "Born from a region known for geologic activity"
+  ✅ GOOD: "Named by fur trappers in the early 1800s"
+  ✅ GOOD: "First mapped by the Lewis and Clark expedition in 1806"
 
-Clue 3: Abstract legacy (philosophical)
-  Example: "Left behind work that challenged conventional boundaries" NOT "influenced artists"
-  Keep it broad and conceptual
+Clue 2: Geographic region or location (specific)
+  ❌ BAD: "Its journey could be likened to a serpentine dance"
+  ✅ GOOD: "Begins in northwestern Wyoming near the Continental Divide"
+  ✅ GOOD: "Flows through Montana and North Dakota"
 
-Clue 4: Obscure association (requires knowledge)
-  Example: "Connected to a southern French institution for the troubled" NOT "was in an asylum"
-  Use indirect references
+Clue 3: Physical characteristics (measurements, numbers)
+  ❌ BAD: "An enduring testament to the transformative power of water"
+  ✅ GOOD: "Stretches 692 miles from source to mouth"
+  ✅ GOOD: "Carved a canyon with walls reaching 1,200 feet high"
 
-Clue 5: Technical detail (for knowledgeable players)
-  Example: "Employed techniques involving thick application and bold color choices" NOT "used thick paint"
-  Describe without naming the technique
+Clue 4: Associated features or landmarks (name them!)
+  ❌ BAD: "Associated with a large mammal of the deer family"
+  ✅ GOOD: "Flows through the national park known for Old Faithful geyser"
+  ✅ GOOD: "Passes through Paradise Valley in Montana"
 
-Clue 6: Lesser-known fact (surprising detail)
-  Example: "Produced an extraordinary volume of work in under a decade" NOT "created 900 paintings"
-  Share unusual facts that aren't the famous ones
+Clue 5: Historical significance (specific events/dates)
+  ❌ BAD: "Witnessed the relentless march of American expansion"
+  ✅ GOOD: "Site of fur trading posts established in the 1820s"
+  ✅ GOOD: "Used by Native American tribes for thousands of years"
 
-Clue 7: Relationship clue (inferential)
-  Example: "Relied on family support from a sibling in the art trade" NOT "brother Theo supported him"
-  Make connections subtle
+Clue 6: Notable features or facts (concrete details)
+  ❌ BAD: "Its anatomy features a major division called 'the Grand'"
+  ✅ GOOD: "Features a dramatic waterfall dropping 308 feet"
+  ✅ GOOD: "Home to the Grand Canyon of [location]"
 
-Clue 8: Strong hint (nationality + field + era)
-  Example: "Northern European creative who worked extensively in southern France" NOT "Dutch post-impressionist"
-  Give solid direction but still require thinking
+Clue 7: Connections or relationships (name them specifically)
+  ❌ BAD: "Ends in a body not quite fresh, yet not quite salty"
+  ✅ GOOD: "Joins the Missouri River near the Montana-North Dakota border"
+  ✅ GOOD: "Largest tributary of the Missouri River system"
 
-CRITICAL: Make clues 1-5 HARD. Only clues 6-8 should be more direct.
+Clue 8: Direct identifying information (very specific)
+  ❌ BAD: "North American liquid highway through land of geysers"
+  ✅ GOOD: "Longest undammed river in the contiguous United States"
+  ✅ GOOD: "Named for the yellow sandstone cliffs along its banks"
 
-GOOD vs BAD EXAMPLES:
-BAD (too easy): "lost an ear" "painted in France" "was a Dutch painter"
-GOOD (right level): "experienced personal tragedy affecting their physical form" "relocated to Mediterranean climate" "originated from Low Countries"
+EXAMPLES OF EXCELLENT CLUES:
 
-Return ONLY valid JSON with EXACTLY these fields (difficulty MUST be "medium"):
+For "Yellowstone River":
+1. "Named by French trappers for its distinctive yellow-colored rocks"
+2. "Originates in the Absaroka Range of northwestern Wyoming"
+3. "Flows 692 miles before joining another major river"
+4. "Runs through America's first national park, established 1872"
+5. "Features the Lower Falls, dropping 308 feet into a canyon"
+6. "The Grand Canyon section has walls 1,200 feet deep"
+7. "Largest undammed river in the contiguous 48 states"
+8. "Joins the Missouri River in western North Dakota"
+
+For "Eiffel Tower":
+1. "Completed in 1889 as the entrance arch to a world's fair"
+2. "Designed by an engineer known for iron railway bridges"
+3. "Stands 1,083 feet tall including its antenna"
+4. "Made of 18,038 pieces of puddle iron held by 2.5 million rivets"
+5. "Located on the Champ de Mars in a European capital"
+6. "Was the world's tallest structure for 41 years"
+7. "Painted every 7 years with 60 tons of paint"
+8. "Iron lattice tower on the Left Bank of the Seine"
+
+For "Marie Curie":
+1. "Born in Warsaw, Poland in 1867"
+2. "Moved to Paris in 1891 to study at the Sorbonne"
+3. "First woman to win a Nobel Prize, awarded in 1903"
+4. "Discovered two radioactive elements: polonium and radium"
+5. "Only person to win Nobel Prizes in two different sciences"
+6. "Conducted research in a converted shed in Paris"
+7. "Died in 1934 from aplastic anemia caused by radiation exposure"
+8. "Polish-French physicist who pioneered radioactivity research"
+
+QUALITY CHECKLIST - Every clue must pass:
+□ Contains at least ONE concrete fact (number, date, name, measurement)
+□ Can be verified in an encyclopedia or Wikipedia
+□ Provides new information, not just rephrasing
+□ No metaphors or "poetic" language
+□ No phrases like "could be described as" or "might be called"
+□ Directly states facts, doesn't hint at them vaguely
+□ A person hearing this clue learns something specific
+
+Return ONLY valid JSON:
 {
   "answer": "exact answer (1-4 words)",
   "category": "${category}",
   "difficulty": "medium",
   "clues": ["clue1", "clue2", "clue3", "clue4", "clue5", "clue6", "clue7", "clue8"],
-  "funFact": "surprising lesser-known fact"
-}
-
-IMPORTANT: The "difficulty" field MUST be exactly the string "medium" - no other values are allowed.`;
+  "funFact": "surprising lesser-known fact with specific details"
+}`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -258,9 +286,26 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const allText = mystery.clues.join(' ').toLowerCase();
-      let hasBannedPhrase = false;
+      // NEW: Ban overly poetic/vague phrases
+      const vaguePoetryPhrases = [
+        'could be likened to',
+        'might be described as',
+        'testament to',
+        'enduring legacy',
+        'transformative power',
+        'serpentine dance',
+        'liquid highway',
+        'journey across',
+        'born from',
+        'witness to',
+        'march of',
+        'anatomy features'
+      ];
 
+      const allText = mystery.clues.join(' ').toLowerCase();
+
+      // Check banned phrases
+      let hasBannedPhrase = false;
       for (const banned of bannedPhrases) {
         if (allText.includes(banned.toLowerCase())) {
           console.log(`⚠️ Attempt ${attempts}: Rejected banned phrase "${banned}"`);
@@ -276,6 +321,51 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      // NEW: Check for vague poetry
+      let hasVaguePoetry = false;
+      for (const vague of vaguePoetryPhrases) {
+        if (allText.includes(vague.toLowerCase())) {
+          console.log(`⚠️ Attempt ${attempts}: Too poetic/vague: "${vague}"`);
+          hasVaguePoetry = true;
+          break;
+        }
+      }
+
+      if (hasVaguePoetry) {
+        if (attempts >= maxAttempts) {
+          throw new Error('Generated puzzle is too metaphorical - retry with concrete facts');
+        }
+        continue;
+      }
+
+      // NEW: Verify clues have concrete information
+      let concreteFactCount = 0;
+      const concreteIndicators = [
+        /\d+/, // Contains numbers
+        /\b(19|20)\d{2}\b/, // Contains years
+        /\b(feet|miles|meters|kilometers|inches|pounds|tons)\b/i, // Contains measurements
+        /\b(first|second|third|largest|smallest|tallest|longest)\b/i, // Contains superlatives with facts
+        /\b(named|called|known as)\b/i, // Contains naming
+        /\b(located|situated|found|stands|flows|runs)\b/i // Contains specific location verbs
+      ];
+
+      for (const clue of mystery.clues) {
+        for (const indicator of concreteIndicators) {
+          if (indicator.test(clue)) {
+            concreteFactCount++;
+            break;
+          }
+        }
+      }
+
+      if (concreteFactCount < 5) {
+        console.log(`⚠️ Attempt ${attempts}: Not enough concrete facts. Only ${concreteFactCount} of 8 clues have verifiable information`);
+        if (attempts >= maxAttempts) {
+          throw new Error('Puzzle lacks concrete facts - needs more specific information');
+        }
+        continue;
+      }
+
       if (mystery.answer.split(' ').length > 4) {
         console.log(`⚠️ Attempt ${attempts}: Answer too long (${mystery.answer})`);
         if (attempts >= maxAttempts) {
@@ -284,6 +374,7 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      console.log(`✅ Quality check passed: ${concreteFactCount} clues with concrete facts`);
       console.log(`✅ Accepted mystery: ${mystery.answer}`);
       break;
     }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './game-styles.css';
 import { gameCache } from './utils/gameCache';
 import { handleError, retryOperation, logError } from './utils/errorHandler';
+import { logMysteryQuality } from './utils/mysteryValidator';
 import HintSystem from './components/HintSystem';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -136,6 +137,10 @@ export default function CipherGame() {
       }, 3, 1000);
 
       console.log('✓ Mystery generated:', mystery);
+
+      // NEW: Log quality report for debugging
+      logMysteryQuality(mystery);
+
       gameCache.setMystery(gameState.selectedCategory, today, mystery);
 
       setGameState(prev => ({

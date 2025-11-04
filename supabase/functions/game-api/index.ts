@@ -40,27 +40,37 @@ Deno.serve(async (req: Request) => {
       console.log(`✅ Deleted all puzzles for ${today}`);
 
       const categoriesToGenerate = categories || ['person', 'place', 'thing'];
-      const results = [];
 
-      for (const cat of categoriesToGenerate) {
-        const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-mystery`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ category: cat, userId }),
-        });
+      // Parallel generation for 3x faster puzzle creation!
+      console.log(`🚀 Generating ${categoriesToGenerate.length} puzzles in parallel...`);
 
-        if (generateResponse.ok) {
-          const newMystery = await generateResponse.json();
-          results.push(newMystery);
-          console.log(`✅ Generated ${cat}: ${newMystery.answer}`);
-        } else {
-          const errorText = await generateResponse.text();
-          console.error(`Failed to generate ${cat}:`, errorText);
+      const generatePromises = categoriesToGenerate.map(async (cat) => {
+        try {
+          const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-mystery`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ category: cat, userId }),
+          });
+
+          if (generateResponse.ok) {
+            const newMystery = await generateResponse.json();
+            console.log(`✅ Generated ${cat}: ${newMystery.answer}`);
+            return newMystery;
+          } else {
+            const errorText = await generateResponse.text();
+            console.error(`Failed to generate ${cat}:`, errorText);
+            return null;
+          }
+        } catch (error) {
+          console.error(`Error generating ${cat}:`, error);
+          return null;
         }
-      }
+      });
+
+      const results = (await Promise.all(generatePromises)).filter(r => r !== null);
 
       return new Response(
         JSON.stringify({ success: true, generated: results.length }),

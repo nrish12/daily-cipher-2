@@ -7,8 +7,11 @@ import { logMysteryQuality } from './utils/mysteryValidator';
 import { shareResults } from './utils/shareResults';
 import { StreakTracker } from './utils/streakTracker';
 import { AchievementManager, Achievement } from './utils/achievements';
+import { analytics } from './utils/analytics';
+import { sanitizeGuess, validateGuess } from './utils/validation';
 import HintSystem from './components/HintSystem';
 import AchievementToast from './components/AchievementToast';
+import LoadingSkeleton from './components/LoadingSkeleton';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -122,6 +125,9 @@ export default function CipherGame() {
         setShowStart(false);
         setShowGame(true);
         showFeedbackMsg('Mystery loaded! Start guessing!', 'success');
+
+        // Track game started
+        analytics.gameStarted(category);
         setGeneratingPuzzles(false);
         return;
       }
@@ -179,10 +185,20 @@ export default function CipherGame() {
   };
 
   const submitGuess = async () => {
-    const guess = guessInput.trim();
-    if (!guess) return;
+    const rawGuess = guessInput.trim();
 
+    // Validate guess
+    const validation = validateGuess(rawGuess);
+    if (!validation.valid) {
+      showFeedbackMsg(validation.error!, 'error');
+      return;
+    }
+
+    const guess = sanitizeGuess(rawGuess);
     console.log('🎯 Submitting guess:', guess);
+
+    // Track analytics
+    analytics.guessSubmitted(false, gameState.attempts + 1, gameState.cluesRevealed.length);
 
     // FAST CLIENT-SIDE CHECK FIRST (instant!)
     const normalizedGuess = guess.toLowerCase().trim();
@@ -289,6 +305,10 @@ export default function CipherGame() {
         if (newAchievements.length > 0) {
           // Show first achievement (could queue others)
           setTimeout(() => setCurrentAchievement(newAchievements[0]), 1000);
+          // Track achievement
+          newAchievements.forEach(achievement => {
+            analytics.achievementUnlocked(achievement.id, achievement.rarity);
+          });
         }
 
         setGameState(prev => ({
@@ -299,6 +319,15 @@ export default function CipherGame() {
         }));
         setShowGame(false);
         setShowResult(true);
+
+        // Track puzzle solved
+        const timeSeconds = gameTime / 1000;
+        analytics.puzzleSolved(gameState.score + streakBonus, gameState.attempts + 1, timeSeconds, gameState.selectedCategory || 'unknown');
+
+        // Track streak if applicable
+        if (updatedStreak.currentStreak > 1) {
+          analytics.streakExtended(updatedStreak.currentStreak);
+        }
 
         // Celebrate with confetti!
         confetti({
@@ -322,6 +351,9 @@ export default function CipherGame() {
           setShowGame(false);
           setShowResult(true);
           showFeedbackMsg('😞 Out of attempts! Game over.', 'error');
+
+          // Track puzzle failed
+          analytics.puzzleFailed(gameState.attempts + 1, gameState.cluesRevealed.length, gameState.selectedCategory || 'unknown');
         } else {
           const newClueIndex = gameState.cluesRevealed.length;
           if (newClueIndex < gameState.allClues.length) {
@@ -482,6 +514,8 @@ export default function CipherGame() {
       return;
     }
 
+    analytics.hintUsed('basic', gameState.cluesRevealed.length);
+
     setGameState(prev => ({
       ...prev,
       hintsAvailable: prev.hintsAvailable - 1,
@@ -499,6 +533,8 @@ export default function CipherGame() {
       showFeedbackMsg('All clues already revealed!', 'error');
       return;
     }
+
+    analytics.hintUsed('reveal_clue', gameState.cluesRevealed.length);
 
     const newClueIndex = gameState.cluesRevealed.length;
     setGameState(prev => ({
@@ -747,6 +783,7 @@ export default function CipherGame() {
                   hintsUsed: 3 - gameState.hintsAvailable
                 });
                 if (success) {
+                  analytics.shareClicked();
                   showFeedbackMsg('Results copied! Share with friends! 🎉', 'success');
                 }
               }}

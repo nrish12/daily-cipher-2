@@ -1,16 +1,16 @@
-area:frontend:
+"area:frontend":
   - src/**
   - public/**
 
-area:backend:
+"area:backend":
   - server.js
   - utils/**
   - supabase/**
 
-area:docs:
+"area:docs":
   - "*.md"
   - docs/**
 
-area:integration:
+"area:integration":
   - packages/**
   - libs/**

@@ -38,49 +38,49 @@ Make puzzles HARDER by:
     }
   }
 
-  const prompt = `You are an expert puzzle designer creating CHALLENGING mystery games for experienced players.${adaptiveInstructions}
+  const prompt = `You are an expert puzzle designer creating FUN and FAIR mystery games.${adaptiveInstructions}
 
 CRITICAL RULES:
-1. Choose subjects that only 30-40% of educated adults would know (DIFFICULT level)
+1. Choose subjects that 60-75% of educated adults would know (MEDIUM difficulty)
 2. Generate EXACTLY 8 clues that progressively reveal the answer
-3. NEVER use the most famous/iconic fact about the subject
-4. Clues 1-6 should be EXTREMELY CRYPTIC and require deep thinking/research
-5. Only clues 7-8 can be more direct hints
+3. NEVER use the most famous/iconic fact about the subject in early clues
+4. Clues should be clever but FAIR - require thinking but not deep research
+5. Clues 1-3 should be indirect but solvable, clues 4-6 more helpful, clues 7-8 clear
 6. Answer must be 1-4 words maximum
-7. Avoid the most obvious/famous subjects - be creative and unique
+7. Choose interesting subjects - not too obvious, but not obscure
 8. BANNED: Einstein, Freud, Eiffel Tower, Great Barrier Reef, Mona Lisa, Beatles, Shakespeare
 
 CATEGORY DEFINITIONS - ULTRA STRICT - NO EDGE CASES:
 
-PERSON: Historical figures, celebrities, scientists, artists (MUST BE CHALLENGING)
-  ✅ ALLOWED: Lesser-known scientists, obscure historical figures, underrated artists, niche inventors
+PERSON: Historical figures, celebrities, scientists, artists (MEDIUM difficulty)
+  ✅ ALLOWED: Well-known but not overly famous people - think second tier celebrities, notable historical figures
   ❌ NEVER:
     - Groups (Beatles), fictional characters, brands named after people
-    - Obvious choices: Einstein, Freud, Tesla, Edison, Da Vinci, Picasso, Mozart
-    - Anyone in top 50 most famous people lists
-  🎲 IMPORTANT: Pick OBSCURE but still verifiable historical figures
+    - Top 20 most famous: Einstein, Freud, Tesla, Edison, Da Vinci, Picasso, Mozart, Shakespeare
+    - Extremely obscure people nobody has heard of
+  🎲 IMPORTANT: Pick recognizable people that educated adults would know or could deduce
 
-PLACE: Bodies of water, deserts, forests, plains ONLY (MUST BE CHALLENGING)
-  ✅ ALLOWED: Lesser-known rivers, obscure seas, remote deserts, specific forest regions, unique valleys
+PLACE: Bodies of water, deserts, forests, plains ONLY (MEDIUM difficulty)
+  ✅ ALLOWED: Well-known natural places - famous rivers, seas, deserts, forests that people learn about in school
   ❌ NEVER:
     - Volcanoes → THING
     - Mountains → THING
     - Cities, countries → Too broad
     - Man-made structures → THING
-    - Obvious places: Great Barrier Reef, Amazon Rainforest, Sahara, Pacific Ocean, Grand Canyon
-  🎲 IMPORTANT: Pick OBSCURE natural locations that require real geography knowledge
+    - Top 10 most famous: Great Barrier Reef, Amazon Rainforest, Sahara, Pacific Ocean, Grand Canyon, Nile, Atlantic
+  🎲 IMPORTANT: Pick natural locations that are recognizable but not the first ones everyone thinks of
 
-THING: Physical objects you can touch or see (MUST BE CHALLENGING)
+THING: Physical objects you can touch or see (MEDIUM difficulty)
   ✅ ALLOWED:
-    - Lesser-known inventions, obscure historical devices, niche tools
-    - Specific artworks beyond the famous ones
-    - Specific natural formations (not the most famous ones)
-    - Historical artifacts, unique structures
+    - Famous inventions, well-known structures, notable artworks
+    - Historical artifacts people would recognize
+    - Specific natural formations that are recognizable
+    - Famous landmarks (but not the top 10 most famous)
   ❌ NEVER:
     - Concepts, emotions, events, abstract ideas
-    - Obvious choices: Eiffel Tower, Statue of Liberty, Great Wall, Taj Mahal, Mona Lisa
-    - The first/most famous invention of anything
-  🎲 IMPORTANT: Pick OBSCURE but verifiable physical objects
+    - Top 10 most famous: Eiffel Tower, Statue of Liberty, Great Wall, Taj Mahal, Mona Lisa
+    - Extremely obscure objects
+  🎲 IMPORTANT: Pick recognizable physical objects that educated adults would know
 
 BANNED PHRASES (never use these iconic facts):
 - Van Gogh: "cut his ear", "lost an ear", "ear incident"
@@ -89,14 +89,14 @@ BANNED PHRASES (never use these iconic facts):
 - Shakespeare: "to be or not to be"
 - Any instantly recognizable catchphrase
 
-DIFFICULTY LEVEL: VERY HARD - FOR EXPERIENCED PLAYERS
-Make players REALLY THINK and RESEARCH. Early clues should be nearly impossible without deep knowledge.
-The answer should NOT be guessable until clue 6 or 7 at minimum.
+DIFFICULTY LEVEL: MEDIUM - FUN BUT CHALLENGING
+Make players THINK but keep it FUN. Early clues should be indirect but clever, not impossible.
+Players should be able to guess after clue 4-5 if they're knowledgeable, or clue 6-7 if they need more help.
 
 CLUE PROGRESSION (8 clues for ${category}):
-Clue 1: EXTREMELY vague era/context (almost impossible)
-  Example: "Born in an age when empires crumbled and new orders rose" NOT "lived in the 1800s"
-  Make it SO cryptic that it could apply to many subjects
+Clue 1: Vague but fair era/context
+  Example: "Emerged during a century of industrial revolution and social change" NOT "lived in the 1800s"
+  Make it indirect but still a real clue that narrows things down
 
 Clue 2: Indirect field reference (metaphorical)
   Example: "Manipulated perception through visual composition" NOT "was a painter"
@@ -132,14 +132,16 @@ GOOD vs BAD EXAMPLES:
 BAD (too easy): "lost an ear" "painted in France" "was a Dutch painter"
 GOOD (right level): "experienced personal tragedy affecting their physical form" "relocated to Mediterranean climate" "originated from Low Countries"
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with EXACTLY these fields (difficulty MUST be "medium"):
 {
   "answer": "exact answer (1-4 words)",
   "category": "${category}",
   "difficulty": "medium",
   "clues": ["clue1", "clue2", "clue3", "clue4", "clue5", "clue6", "clue7", "clue8"],
   "funFact": "surprising lesser-known fact"
-}`;
+}
+
+IMPORTANT: The "difficulty" field MUST be exactly the string "medium" - no other values are allowed.`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -159,7 +161,7 @@ Return ONLY valid JSON:
           content: prompt
         }
       ],
-      temperature: 1.0,
+      temperature: 0.85,
     }),
   });
 

@@ -1,24 +1,24 @@
 area:frontend:
   - changed-files:
-    - any-glob-to-any-file:
-      - 'src/**'
-      - 'public/**'
+      - any-glob-to-any-file:
+          - 'src/**'
+          - 'public/**'
 
 area:backend:
   - changed-files:
-    - any-glob-to-any-file:
-      - 'server.js'
-      - 'utils/**'
-      - 'supabase/**'
+      - any-glob-to-any-file:
+          - 'server.js'
+          - 'utils/**'
+          - 'supabase/**'
 
 area:docs:
   - changed-files:
-    - any-glob-to-any-file:
-      - '*.md'
-      - 'docs/**'
+      - any-glob-to-any-file:
+          - '*.md'
+          - 'docs/**'
 
 area:integration:
   - changed-files:
-    - any-glob-to-any-file:
-      - 'packages/**'
-      - 'libs/**'
+      - any-glob-to-any-file:
+          - 'packages/**'
+          - 'libs/**'

@@ -3,7 +3,8 @@ interface CachedMystery {
   timestamp: number;
 }
 
-const CACHE_DURATION = 5 * 60 * 1000;
+// Cache for 24 hours - puzzles are daily so no need to refetch
+const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 class GameCache {
   private mysteryCache: Map<string, CachedMystery> = new Map();

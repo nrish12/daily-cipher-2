@@ -19,14 +19,14 @@ async function generateMysteryWithAI(category: string, learningInsights?: any) {
     console.log("🧠 Applying AI learning insights:", learningInsights.difficulty_adjustment);
 
     if (learningInsights.difficulty_adjustment === "easier") {
-      adaptiveInstructions = `\n\n🤖 AI LEARNING ADJUSTMENT: Players are struggling (${learningInsights.avg_solve_rate}% solve rate).
+      adaptiveInstructions = `\n\n🤖 AI LEARNING ADJUSTMENT: Players are struggling (${learningInsights.avg_solve_rate.toFixed(1)}% solve rate).
 Make puzzles EASIER by:
 - Clue 4: Be MORE specific and helpful
 - Clue 5: Give a clear, direct hint
 - Clue 6: Use well-known facts
 - Overall: Reduce cryptic language`;
     } else if (learningInsights.difficulty_adjustment === "harder") {
-      adaptiveInstructions = `\n\n🤖 AI LEARNING ADJUSTMENT: Players find this too easy (${learningInsights.avg_solve_rate}% solve rate).
+      adaptiveInstructions = `\n\n🤖 AI LEARNING ADJUSTMENT: Players find this too easy (${learningInsights.avg_solve_rate.toFixed(1)}% solve rate).
 Make puzzles HARDER by:
 - Clue 1-3: Be MORE cryptic and indirect
 - Clue 4: Stay vague
@@ -35,6 +35,41 @@ Make puzzles HARDER by:
 
     if (learningInsights.guess_patterns?.earlyGuessers > learningInsights.guess_patterns?.lateGuessers * 2) {
       adaptiveInstructions += `\n- Players guess impatiently, so early clues should be extra cryptic`;
+    }
+
+    // Add clue-specific insights
+    if (learningInsights.clue_insights) {
+      const clueInsights = learningInsights.clue_insights;
+
+      adaptiveInstructions += `\n\n📊 CLUE EFFECTIVENESS DATA:`;
+
+      if (clueInsights.optimalRevealPoint) {
+        adaptiveInstructions += `\n- Most players solve at clue ${clueInsights.optimalRevealPoint}`;
+        if (clueInsights.optimalRevealPoint <= 3) {
+          adaptiveInstructions += ` (TOO EASY - make early clues less revealing)`;
+        } else if (clueInsights.optimalRevealPoint >= 7) {
+          adaptiveInstructions += ` (TOO HARD - make mid-game clues more helpful)`;
+        } else {
+          adaptiveInstructions += ` (GOOD BALANCE)`;
+        }
+      }
+
+      if (clueInsights.leastEffectiveClues && clueInsights.leastEffectiveClues.length > 0) {
+        adaptiveInstructions += `\n\n⚠️ IMPROVE THESE CLUE POSITIONS:`;
+        for (const clue of clueInsights.leastEffectiveClues) {
+          if (clue.effectivenessRate < 15 && clue.timesRevealed > 5) {
+            adaptiveInstructions += `\n- Clue ${clue.position}: Only ${clue.effectivenessRate.toFixed(1)}% effectiveness - make this clue MORE useful and specific`;
+          }
+        }
+      }
+
+      if (clueInsights.mostEffectiveClues && clueInsights.mostEffectiveClues.length > 0) {
+        const bestClue = clueInsights.mostEffectiveClues[0];
+        if (bestClue.effectivenessRate > 40) {
+          adaptiveInstructions += `\n\n✅ CLUE POSITION ${bestClue.position} WORKS WELL (${bestClue.effectivenessRate.toFixed(1)}% effective):`;
+          adaptiveInstructions += `\n- Use similar specificity and style for other mid-game clues`;
+        }
+      }
     }
   }
 
@@ -201,6 +236,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const mystery = await generateMysteryWithAI(category, latestInsights);
+
+    // Mark insights as applied after successful generation
+    if (latestInsights) {
+      await supabase
+        .from("ai_learning_insights")
+        .update({ applied: true })
+        .eq("analyzed_at", latestInsights.analyzed_at);
+      console.log("✅ Marked insights as applied");
+    }
 
     const bannedPhrases = [
       'cut his ear', 'lost an ear', 'ear incident',

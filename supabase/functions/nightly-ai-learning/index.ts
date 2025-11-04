@@ -13,7 +13,7 @@ async function analyzeAndLearn(supabase: any) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [guessesResult, analyticsResult] = await Promise.all([
+  const [guessesResult, analyticsResult, clueEffectivenessResult] = await Promise.all([
     supabase
       .from("user_guesses")
       .select("*")
@@ -23,11 +23,17 @@ async function analyzeAndLearn(supabase: any) {
       .from("mystery_analytics")
       .select("*")
       .order("updated_at", { ascending: false })
-      .limit(50)
+      .limit(50),
+    supabase
+      .from("clue_effectiveness")
+      .select("*")
+      .order("times_revealed", { ascending: false })
+      .limit(100)
   ]);
 
   const recentGuesses = guessesResult.data;
   const analytics = analyticsResult.data;
+  const clueEffectiveness = clueEffectivenessResult.data;
 
   if (!analytics || analytics.length === 0) {
     console.log("No data yet to analyze");
@@ -75,6 +81,73 @@ async function analyzeAndLearn(supabase: any) {
     guessPatterns.lateGuessers = lateGuessers;
   }
 
+  // Analyze clue effectiveness
+  const clueInsights: any = {
+    mostEffectiveClues: [],
+    leastEffectiveClues: [],
+    optimalRevealPoint: 0,
+    cluePatterns: {}
+  };
+
+  if (clueEffectiveness && clueEffectiveness.length > 0) {
+    console.log("📊 Analyzing clue effectiveness data...");
+
+    // Group clues by index (0-7)
+    const cluesByIndex: any = {};
+    for (let i = 0; i < 8; i++) {
+      cluesByIndex[i] = clueEffectiveness.filter((c: any) => c.clue_index === i);
+    }
+
+    // Calculate effectiveness rate for each clue position
+    const clueEffectivenessRates: any[] = [];
+    for (let i = 0; i < 8; i++) {
+      const cluesAtIndex = cluesByIndex[i];
+      if (cluesAtIndex && cluesAtIndex.length > 0) {
+        const totalRevealed = cluesAtIndex.reduce((sum: number, c: any) => sum + (c.times_revealed || 0), 0);
+        const totalSolves = cluesAtIndex.reduce((sum: number, c: any) => sum + (c.led_to_solve || 0), 0);
+        const effectivenessRate = totalRevealed > 0 ? (totalSolves / totalRevealed) * 100 : 0;
+
+        clueEffectivenessRates.push({
+          clueIndex: i,
+          timesRevealed: totalRevealed,
+          ledToSolve: totalSolves,
+          effectivenessRate: effectivenessRate,
+          position: i + 1
+        });
+      }
+    }
+
+    // Sort by effectiveness
+    clueEffectivenessRates.sort((a, b) => b.effectivenessRate - a.effectivenessRate);
+
+    clueInsights.mostEffectiveClues = clueEffectivenessRates.slice(0, 3);
+    clueInsights.leastEffectiveClues = clueEffectivenessRates.slice(-3);
+
+    // Find optimal reveal point (where most solves happen)
+    const solvesByClueCount: any = {};
+    if (recentGuesses) {
+      for (const guess of recentGuesses) {
+        if (guess.is_correct) {
+          const clueCount = guess.clues_seen_count;
+          solvesByClueCount[clueCount] = (solvesByClueCount[clueCount] || 0) + 1;
+        }
+      }
+    }
+
+    let maxSolves = 0;
+    let optimalPoint = 4;
+    for (const [count, solves] of Object.entries(solvesByClueCount)) {
+      if ((solves as number) > maxSolves) {
+        maxSolves = solves as number;
+        optimalPoint = parseInt(count);
+      }
+    }
+    clueInsights.optimalRevealPoint = optimalPoint;
+    clueInsights.solveDistribution = solvesByClueCount;
+
+    console.log("✅ Clue effectiveness analysis complete:", clueInsights);
+  }
+
   const recommendations: any[] = [];
   let difficultyAdjustment = "maintain";
 
@@ -112,6 +185,50 @@ async function analyzeAndLearn(supabase: any) {
     });
   }
 
+  // Add clue-specific recommendations
+  if (clueInsights.leastEffectiveClues.length > 0) {
+    for (const clue of clueInsights.leastEffectiveClues) {
+      if (clue.effectivenessRate < 10 && clue.timesRevealed > 10) {
+        recommendations.push({
+          type: "clue_quality",
+          severity: "high",
+          message: `Clue position ${clue.position} has low effectiveness (${clue.effectivenessRate.toFixed(1)}%)`,
+          action: `Make clue ${clue.position} more helpful and specific`
+        });
+      }
+    }
+  }
+
+  if (clueInsights.optimalRevealPoint) {
+    if (clueInsights.optimalRevealPoint <= 3) {
+      recommendations.push({
+        type: "early_solves",
+        severity: "medium",
+        message: `Most players solve at clue ${clueInsights.optimalRevealPoint} - too easy`,
+        action: "Make clues 1-3 more cryptic to increase challenge"
+      });
+    } else if (clueInsights.optimalRevealPoint >= 7) {
+      recommendations.push({
+        type: "late_solves",
+        severity: "high",
+        message: `Most players need ${clueInsights.optimalRevealPoint} clues - too hard`,
+        action: "Make clue 5-6 more direct to help struggling players"
+      });
+    }
+  }
+
+  if (clueInsights.mostEffectiveClues.length > 0) {
+    const bestClue = clueInsights.mostEffectiveClues[0];
+    if (bestClue.effectivenessRate > 50) {
+      recommendations.push({
+        type: "clue_success",
+        severity: "low",
+        message: `Clue position ${bestClue.position} is highly effective (${bestClue.effectivenessRate.toFixed(1)}%)`,
+        action: `Use similar style/specificity for other mid-game clues`
+      });
+    }
+  }
+
   const learningData = {
     analyzed_at: new Date().toISOString(),
     avg_solve_rate: avgSolveRate,
@@ -120,6 +237,7 @@ async function analyzeAndLearn(supabase: any) {
     too_easy_count: tooEasy.length,
     recommendations,
     guess_patterns: guessPatterns,
+    clue_insights: clueInsights,
     total_games_analyzed: analytics.length,
     total_guesses_analyzed: recentGuesses?.length || 0
   };
@@ -154,6 +272,7 @@ Deno.serve(async (req: Request) => {
         too_easy_count: insights.too_easy_count,
         recommendations: insights.recommendations,
         guess_patterns: insights.guess_patterns,
+        clue_insights: insights.clue_insights,
         total_games_analyzed: insights.total_games_analyzed,
         total_guesses_analyzed: insights.total_guesses_analyzed,
         applied: false

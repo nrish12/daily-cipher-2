@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './game-styles.css';
+import confetti from 'canvas-confetti';
 import { gameCache } from './utils/gameCache';
 import { handleError, retryOperation, logError } from './utils/errorHandler';
 import { logMysteryQuality } from './utils/mysteryValidator';
@@ -69,6 +70,7 @@ export default function CipherGame() {
   // Week 1 features
   const [streakData, setStreakData] = useState(StreakTracker.getStreak());
   const [currentAchievement, setCurrentAchievement] = useState<Achievement | null>(null);
+  const [shakeInput, setShakeInput] = useState(false);
 
   function getUserId() {
     let userId = localStorage.getItem('dailyCipherUserId');
@@ -298,12 +300,23 @@ export default function CipherGame() {
         setShowGame(false);
         setShowResult(true);
 
+        // Celebrate with confetti!
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
         if (streakBonus > 0) {
           showFeedbackMsg(`🎉 Correct! 🔥 ${updatedStreak.currentStreak} day streak! Bonus: +${streakBonus}`, 'success');
         } else {
           showFeedbackMsg('🎉 Correct! You solved it!', 'success');
         }
       } else {
+        // Shake animation on wrong answer
+        setShakeInput(true);
+        setTimeout(() => setShakeInput(false), 500);
+
         if (gameState.attempts + 1 >= gameState.maxAttempts) {
           setGameState(prev => ({ ...prev, gameActive: false }));
           setShowGame(false);
@@ -629,16 +642,21 @@ export default function CipherGame() {
               onRevealClue={revealClueWithHint}
             />
 
-            <div className="mb-8">
+            <div className="mb-8" role="region" aria-label="Game clues">
               <h3 className="text-2xl font-bold mb-4">Clues</h3>
-              <div className="space-y-3">
+              <div className="space-y-3" role="list">
                 {gameState.cluesRevealed.map((clue, i) => (
-                  <div key={i} className="bg-slate-700 p-4 rounded-lg">
+                  <div key={i} className="bg-slate-700 p-4 rounded-lg slide-up" role="listitem" aria-label={`Clue ${i + 1}`}>
                     <span className="text-purple-400 font-bold mr-2">#{i + 1}</span>
                     {clue}
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Screen reader status announcement */}
+            <div role="status" aria-live="polite" className="sr-only">
+              {gameState.solved ? 'Puzzle solved!' : `${gameState.maxAttempts - gameState.attempts} attempts remaining. ${gameState.cluesRevealed.length} clues revealed.`}
             </div>
 
             {gameState.guessHistory.length > 0 && (
@@ -659,10 +677,15 @@ export default function CipherGame() {
                 type="text"
                 value={guessInput}
                 onChange={(e) => setGuessInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && submitGuess()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitGuess();
+                  if (e.key === 'Escape') setGuessInput('');
+                }}
                 placeholder="Type your answer..."
-                className="flex-1 px-4 py-3 rounded-lg bg-slate-700 border-2 border-slate-600 focus:border-purple-500 outline-none"
+                className={`flex-1 px-4 py-3 rounded-lg bg-slate-700 border-2 border-slate-600 focus:border-purple-500 outline-none transition-all ${shakeInput ? 'shake' : ''}`}
                 maxLength={50}
+                aria-label="Enter your guess"
+                role="textbox"
               />
               <button
                 onClick={submitGuess}

@@ -38,41 +38,49 @@ Make puzzles HARDER by:
     }
   }
 
-  const prompt = `You are an expert puzzle designer creating clever, fair mystery games.${adaptiveInstructions}
+  const prompt = `You are an expert puzzle designer creating CHALLENGING mystery games for experienced players.${adaptiveInstructions}
 
 CRITICAL RULES:
-1. Choose subjects that 50-60% of educated adults would know (moderately challenging)
+1. Choose subjects that only 30-40% of educated adults would know (DIFFICULT level)
 2. Generate EXACTLY 8 clues that progressively reveal the answer
 3. NEVER use the most famous/iconic fact about the subject
-4. Clues 1-5 should be CRYPTIC and require thinking/research
-5. Clues 6-8 can be more direct but still require deduction
+4. Clues 1-6 should be EXTREMELY CRYPTIC and require deep thinking/research
+5. Only clues 7-8 can be more direct hints
 6. Answer must be 1-4 words maximum
-7. Make early clues challenging but ALWAYS fair and truthful
+7. Avoid the most obvious/famous subjects - be creative and unique
+8. BANNED: Einstein, Freud, Eiffel Tower, Great Barrier Reef, Mona Lisa, Beatles, Shakespeare
 
 CATEGORY DEFINITIONS - ULTRA STRICT - NO EDGE CASES:
 
-PERSON: Historical figures, celebrities, scientists, artists
-  ✅ ALLOWED: Scientists, musicians, painters, actors, inventors, historical leaders, athletes
-  ❌ NEVER: Groups (Beatles), fictional characters, brands named after people
-  🎲 IMPORTANT: Pick someone UNIQUE and DIFFERENT each time - avoid repeating subjects
+PERSON: Historical figures, celebrities, scientists, artists (MUST BE CHALLENGING)
+  ✅ ALLOWED: Lesser-known scientists, obscure historical figures, underrated artists, niche inventors
+  ❌ NEVER:
+    - Groups (Beatles), fictional characters, brands named after people
+    - Obvious choices: Einstein, Freud, Tesla, Edison, Da Vinci, Picasso, Mozart
+    - Anyone in top 50 most famous people lists
+  🎲 IMPORTANT: Pick OBSCURE but still verifiable historical figures
 
-PLACE: Bodies of water, deserts, forests, plains ONLY
-  ✅ ALLOWED: Rivers, oceans, seas, lakes, deserts, forests, plains, reefs, valleys
+PLACE: Bodies of water, deserts, forests, plains ONLY (MUST BE CHALLENGING)
+  ✅ ALLOWED: Lesser-known rivers, obscure seas, remote deserts, specific forest regions, unique valleys
   ❌ NEVER:
     - Volcanoes → THING
     - Mountains → THING
     - Cities, countries → Too broad
     - Man-made structures → THING
-  🎲 IMPORTANT: Pick a UNIQUE location each time - be creative
+    - Obvious places: Great Barrier Reef, Amazon Rainforest, Sahara, Pacific Ocean, Grand Canyon
+  🎲 IMPORTANT: Pick OBSCURE natural locations that require real geography knowledge
 
-THING: Physical objects you can touch or see
+THING: Physical objects you can touch or see (MUST BE CHALLENGING)
   ✅ ALLOWED:
-    - Inventions (modern/historical devices, vehicles, tools)
-    - Structures (towers, bridges, buildings, monuments, landmarks)
-    - Art (famous paintings, sculptures)
-    - Natural formations (mountains, volcanoes, canyons, caves)
-  ❌ NEVER: Concepts, emotions, events, abstract ideas
-  🎲 IMPORTANT: Pick something UNIQUE each time - be creative and varied
+    - Lesser-known inventions, obscure historical devices, niche tools
+    - Specific artworks beyond the famous ones
+    - Specific natural formations (not the most famous ones)
+    - Historical artifacts, unique structures
+  ❌ NEVER:
+    - Concepts, emotions, events, abstract ideas
+    - Obvious choices: Eiffel Tower, Statue of Liberty, Great Wall, Taj Mahal, Mona Lisa
+    - The first/most famous invention of anything
+  🎲 IMPORTANT: Pick OBSCURE but verifiable physical objects
 
 BANNED PHRASES (never use these iconic facts):
 - Van Gogh: "cut his ear", "lost an ear", "ear incident"
@@ -81,13 +89,14 @@ BANNED PHRASES (never use these iconic facts):
 - Shakespeare: "to be or not to be"
 - Any instantly recognizable catchphrase
 
-DIFFICULTY LEVEL: CHALLENGING BUT FAIR
-Make players THINK and RESEARCH. Early clues should require deduction.
+DIFFICULTY LEVEL: VERY HARD - FOR EXPERIENCED PLAYERS
+Make players REALLY THINK and RESEARCH. Early clues should be nearly impossible without deep knowledge.
+The answer should NOT be guessable until clue 6 or 7 at minimum.
 
 CLUE PROGRESSION (8 clues for ${category}):
-Clue 1: Extremely vague era/context (requires thinking)
-  Example: "Emerged during a time of industrial change and social upheaval" NOT "lived in the 1800s"
-  Make it cryptic - don't give away century
+Clue 1: EXTREMELY vague era/context (almost impossible)
+  Example: "Born in an age when empires crumbled and new orders rose" NOT "lived in the 1800s"
+  Make it SO cryptic that it could apply to many subjects
 
 Clue 2: Indirect field reference (metaphorical)
   Example: "Manipulated perception through visual composition" NOT "was a painter"
@@ -150,7 +159,7 @@ Return ONLY valid JSON:
           content: prompt
         }
       ],
-      temperature: 0.9,
+      temperature: 1.0,
     }),
   });
 
@@ -200,26 +209,85 @@ Deno.serve(async (req: Request) => {
       console.log("📊 Using AI learning insights from:", latestInsights.analyzed_at);
     }
 
-    const mystery = await generateMysteryWithAI(category, latestInsights);
+    let mystery;
+    let attempts = 0;
+    const maxAttempts = 5;
 
-    const bannedPhrases = [
-      'cut his ear', 'lost an ear', 'ear incident',
-      'stuck tongue', 'tongue out', 'tongue photo',
-      'no eyebrow', 'eyebrows',
-      'to be or not to be',
-      'e=mc²', 'e=mc2', 'relativity equation'
-    ];
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`Generation attempt ${attempts}/${maxAttempts}`);
 
-    const allText = mystery.clues.join(' ').toLowerCase();
-    for (const banned of bannedPhrases) {
-      if (allText.includes(banned.toLowerCase())) {
-        console.log('⚠️ Rejected puzzle containing banned phrase:', banned);
-        throw new Error('Generated puzzle contains banned phrase');
+      mystery = await generateMysteryWithAI(category, latestInsights);
+
+      const bannedPhrases = [
+        'cut his ear', 'lost an ear', 'ear incident',
+        'stuck tongue', 'tongue out', 'tongue photo',
+        'no eyebrow', 'eyebrows',
+        'to be or not to be',
+        'e=mc²', 'e=mc2', 'relativity equation'
+      ];
+
+      const bannedSubjects = [
+        'einstein', 'albert einstein', 'freud', 'sigmund freud',
+        'tesla', 'nikola tesla', 'edison', 'thomas edison',
+        'da vinci', 'leonardo da vinci', 'picasso', 'pablo picasso',
+        'mozart', 'beethoven', 'shakespeare', 'william shakespeare',
+        'eiffel tower', 'statue of liberty', 'great wall', 'taj mahal',
+        'great barrier reef', 'amazon rainforest', 'amazon', 'sahara', 'sahara desert',
+        'mona lisa', 'starry night', 'the scream', 'last supper',
+        'beatles', 'the beatles', 'sphinx', 'sphinx of giza'
+      ];
+
+      const answerLower = mystery.answer.toLowerCase();
+      let isBanned = false;
+
+      for (const banned of bannedSubjects) {
+        if (answerLower.includes(banned) || banned.includes(answerLower)) {
+          console.log(`⚠️ Attempt ${attempts}: Rejected banned subject "${mystery.answer}"`);
+          isBanned = true;
+          break;
+        }
       }
+
+      if (isBanned) {
+        if (attempts >= maxAttempts) {
+          throw new Error('Failed to generate acceptable mystery after max attempts');
+        }
+        continue;
+      }
+
+      const allText = mystery.clues.join(' ').toLowerCase();
+      let hasBannedPhrase = false;
+
+      for (const banned of bannedPhrases) {
+        if (allText.includes(banned.toLowerCase())) {
+          console.log(`⚠️ Attempt ${attempts}: Rejected banned phrase "${banned}"`);
+          hasBannedPhrase = true;
+          break;
+        }
+      }
+
+      if (hasBannedPhrase) {
+        if (attempts >= maxAttempts) {
+          throw new Error('Failed to generate acceptable mystery after max attempts');
+        }
+        continue;
+      }
+
+      if (mystery.answer.split(' ').length > 4) {
+        console.log(`⚠️ Attempt ${attempts}: Answer too long (${mystery.answer})`);
+        if (attempts >= maxAttempts) {
+          throw new Error('Answer too long (max 4 words)');
+        }
+        continue;
+      }
+
+      console.log(`✅ Accepted mystery: ${mystery.answer}`);
+      break;
     }
 
-    if (mystery.answer.split(' ').length > 4) {
-      throw new Error('Answer too long (max 4 words)');
+    if (!mystery) {
+      throw new Error('Failed to generate mystery');
     }
 
     const today = new Date().toISOString().split("T")[0];

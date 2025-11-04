@@ -1,4 +1,5 @@
 # Cipher Hunt - Daily Mystery Game
+> Test: PR to ping Claude
 
 A Supabase-powered daily mystery game where players solve puzzles by progressively revealing clues.
 

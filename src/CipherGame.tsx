@@ -3,7 +3,11 @@ import './game-styles.css';
 import { gameCache } from './utils/gameCache';
 import { handleError, retryOperation, logError } from './utils/errorHandler';
 import { logMysteryQuality } from './utils/mysteryValidator';
+import { shareResults } from './utils/shareResults';
+import { StreakTracker } from './utils/streakTracker';
+import { AchievementManager, Achievement } from './utils/achievements';
 import HintSystem from './components/HintSystem';
+import AchievementToast from './components/AchievementToast';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -61,6 +65,10 @@ export default function CipherGame() {
   const [showDevTools, setShowDevTools] = useState(false);
   const [generatingPuzzles, setGeneratingPuzzles] = useState(false);
   const [readyCategories, setReadyCategories] = useState<string[]>([]);
+
+  // Week 1 features
+  const [streakData, setStreakData] = useState(StreakTracker.getStreak());
+  const [currentAchievement, setCurrentAchievement] = useState<Achievement | null>(null);
 
   function getUserId() {
     let userId = localStorage.getItem('dailyCipherUserId');
@@ -245,10 +253,56 @@ export default function CipherGame() {
       }));
 
       if (isCorrect) {
-        setGameState(prev => ({ ...prev, solved: true, gameActive: false }));
+        // Update streak
+        const updatedStreak = StreakTracker.recordPlay();
+        setStreakData(updatedStreak);
+        const streakBonus = StreakTracker.getStreakBonus(updatedStreak.currentStreak);
+
+        // Calculate game time
+        const gameTime = gameState.startTime ? Date.now() - gameState.startTime : 0;
+
+        // Update achievement stats
+        const isPerfectGame = gameState.attempts === 0 && gameState.hintsAvailable === 3;
+        const categoryKey = gameState.selectedCategory?.toLowerCase() as 'person' | 'place' | 'thing' || 'thing';
+
+        const currentStats = AchievementManager.getStats();
+        AchievementManager.updateStats({
+          gamesPlayed: currentStats.gamesPlayed + 1,
+          gamesWon: currentStats.gamesWon + 1,
+          perfectGames: currentStats.perfectGames + (isPerfectGame ? 1 : 0),
+          totalScore: currentStats.totalScore + gameState.score + streakBonus,
+          currentStreak: updatedStreak.currentStreak,
+          longestStreak: updatedStreak.longestStreak,
+          hintsUsed: currentStats.hintsUsed + (3 - gameState.hintsAvailable),
+          cluesRevealed: currentStats.cluesRevealed + gameState.cluesRevealed.length,
+          fastestWin: currentStats.fastestWin === 0 ? gameTime : Math.min(currentStats.fastestWin, gameTime),
+          categories: {
+            ...currentStats.categories,
+            [categoryKey]: (currentStats.categories[categoryKey] || 0) + 1
+          }
+        });
+
+        // Check for new achievements
+        const newAchievements = AchievementManager.checkNewAchievements();
+        if (newAchievements.length > 0) {
+          // Show first achievement (could queue others)
+          setTimeout(() => setCurrentAchievement(newAchievements[0]), 1000);
+        }
+
+        setGameState(prev => ({
+          ...prev,
+          solved: true,
+          gameActive: false,
+          score: prev.score + streakBonus
+        }));
         setShowGame(false);
         setShowResult(true);
-        showFeedbackMsg('🎉 Correct! You solved it!', 'success');
+
+        if (streakBonus > 0) {
+          showFeedbackMsg(`🎉 Correct! 🔥 ${updatedStreak.currentStreak} day streak! Bonus: +${streakBonus}`, 'success');
+        } else {
+          showFeedbackMsg('🎉 Correct! You solved it!', 'success');
+        }
       } else {
         if (gameState.attempts + 1 >= gameState.maxAttempts) {
           setGameState(prev => ({ ...prev, gameActive: false }));
@@ -450,7 +504,24 @@ export default function CipherGame() {
         <header className="text-center mb-12">
           <h1 className="text-5xl font-black mb-4">🔍 CIPHER HUNT</h1>
           <p className="text-xl text-purple-300">Think fast. Guess smart. Beat the clock.</p>
+
+          {streakData.currentStreak > 0 && (
+            <div className="mt-4 inline-block bg-orange-500/20 border-2 border-orange-500 rounded-lg px-6 py-3">
+              <div className="text-sm text-orange-300">Current Streak</div>
+              <div className="text-3xl font-black text-orange-400">
+                🔥 {streakData.currentStreak} {streakData.currentStreak === 1 ? 'Day' : 'Days'}
+              </div>
+              {streakData.longestStreak > streakData.currentStreak && (
+                <div className="text-xs text-orange-300/60">Best: {streakData.longestStreak} days</div>
+              )}
+            </div>
+          )}
         </header>
+
+        <AchievementToast
+          achievement={currentAchievement}
+          onClose={() => setCurrentAchievement(null)}
+        />
 
         {showStart && (
           <div className="bg-slate-800 rounded-2xl p-8 shadow-2xl max-w-2xl mx-auto">
@@ -636,6 +707,30 @@ export default function CipherGame() {
                 ))}
               </div>
             </div>
+
+            <button
+              onClick={async () => {
+                const date = new Date();
+                const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
+
+                const success = await shareResults({
+                  puzzleNumber: dayOfYear,
+                  category: gameState.selectedCategory || 'mystery',
+                  attempts: gameState.attempts,
+                  maxAttempts: gameState.maxAttempts,
+                  cluesUsed: gameState.cluesRevealed.length,
+                  score: gameState.score,
+                  solved: gameState.solved,
+                  hintsUsed: 3 - gameState.hintsAvailable
+                });
+                if (success) {
+                  showFeedbackMsg('Results copied! Share with friends! 🎉', 'success');
+                }
+              }}
+              className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 transition-all mb-4"
+            >
+              📤 SHARE MY SCORE
+            </button>
 
             <button
               onClick={resetGame}

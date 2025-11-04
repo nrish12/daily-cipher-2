@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './game-styles.css';
+import { gameCache } from './utils/gameCache';
+import { handleError, retryOperation, logError } from './utils/errorHandler';
+import HintSystem from './components/HintSystem';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -88,24 +91,52 @@ export default function CipherGame() {
     setGeneratingPuzzles(true);
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          category: gameState.selectedCategory,
-          userId: gameState.userId,
-        }),
-      });
+      const today = new Date().toISOString().split('T')[0];
+      const cached = gameCache.getMystery(gameState.selectedCategory, today);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      if (cached) {
+        console.log('✓ Using cached mystery');
+        const mystery = cached;
+        setGameState(prev => ({
+          ...prev,
+          mysteryId: mystery.id,
+          currentAnswer: mystery.answer,
+          allClues: mystery.clues,
+          cluesRevealed: mystery.clues.slice(0, prev.visibleClues),
+          gameActive: true,
+          gameStarted: true,
+          startTime: Date.now(),
+          mysteryData: mystery,
+        }));
+        setShowStart(false);
+        setShowGame(true);
+        showFeedbackMsg('Mystery loaded! Start guessing!', 'success');
+        setGeneratingPuzzles(false);
+        return;
       }
 
-      const mystery = await response.json();
+      const mystery = await retryOperation(async () => {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            category: gameState.selectedCategory,
+            userId: gameState.userId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        return await response.json();
+      }, 3, 1000);
+
       console.log('✓ Mystery generated:', mystery);
+      gameCache.setMystery(gameState.selectedCategory, today, mystery);
 
       setGameState(prev => ({
         ...prev,
@@ -124,8 +155,9 @@ export default function CipherGame() {
       showFeedbackMsg('Mystery loaded! Start guessing!', 'success');
 
     } catch (error) {
-      console.error('❌ Error starting game:', error);
-      showFeedbackMsg('Error loading mystery. Check console.', 'error');
+      logError('Starting game', error, { category: gameState.selectedCategory });
+      const errorDetails = handleError(error);
+      showFeedbackMsg(errorDetails.userMessage, 'error');
     } finally {
       setGeneratingPuzzles(false);
     }
@@ -169,26 +201,32 @@ export default function CipherGame() {
     }
 
     try {
-      // Call AI only if needed
       if (needsAI) {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/validate-guess`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            guess,
-            answer: gameState.currentAnswer,
-            clues: gameState.cluesRevealed,
-            mysteryId: gameState.mysteryId,
-            userId: gameState.userId,
-            attemptNumber: gameState.attempts + 1,
-            timeElapsed: gameState.startTime ? Date.now() - gameState.startTime : 0,
-          }),
-        });
+        const result = await retryOperation(async () => {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/validate-guess`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              guess,
+              answer: gameState.currentAnswer,
+              clues: gameState.cluesRevealed,
+              mysteryId: gameState.mysteryId,
+              userId: gameState.userId,
+              attemptNumber: gameState.attempts + 1,
+              timeElapsed: gameState.startTime ? Date.now() - gameState.startTime : 0,
+            }),
+          });
 
-        const result = await response.json();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          return await response.json();
+        }, 2, 500);
+
         isCorrect = result.correct;
         console.log('AI Validation result:', result);
       }
@@ -226,8 +264,9 @@ export default function CipherGame() {
 
       setGuessInput('');
     } catch (error) {
-      console.error('Error validating guess:', error);
-      showFeedbackMsg('Error checking answer. Try again.', 'error');
+      logError('Validating guess', error, { guess, mysteryId: gameState.mysteryId });
+      const errorDetails = handleError(error);
+      showFeedbackMsg(errorDetails.userMessage, 'error');
     }
   };
 
@@ -270,35 +309,38 @@ export default function CipherGame() {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      // Use edge function to delete and regenerate
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'regenerate',
-          category: category,
-          userId: gameState.userId,
-          today: today
-        }),
-      });
+      await retryOperation(async () => {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'regenerate',
+            category: category,
+            userId: gameState.userId,
+            today: today
+          }),
+        });
 
-      if (response.ok) {
-        showFeedbackMsg(`New ${category} puzzle generated!`, 'success');
-        setTimeout(() => {
-          setGameState(prev => ({ ...prev, selectedCategory: '' }));
-          window.location.reload();
-        }, 1500);
-      } else {
-        const error = await response.text();
-        console.error('Generate error:', error);
-        showFeedbackMsg('Error generating puzzle', 'error');
-      }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        return await response.json();
+      }, 2, 1000);
+
+      gameCache.clear();
+      showFeedbackMsg(`New ${category} puzzle generated!`, 'success');
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, selectedCategory: '' }));
+        window.location.reload();
+      }, 1500);
     } catch (error) {
-      console.error('Error generating new puzzle:', error);
-      showFeedbackMsg('Error generating puzzle', 'error');
+      logError('Generating new puzzle', error, { category });
+      const errorDetails = handleError(error);
+      showFeedbackMsg(errorDetails.userMessage, 'error');
     }
   };
 
@@ -309,36 +351,38 @@ export default function CipherGame() {
     showFeedbackMsg('Deleting old puzzles and generating new ones with AI...', 'info');
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'regenerate-all',
-          userId: gameState.userId,
-        }),
-      });
+      const result = await retryOperation(async () => {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'regenerate-all',
+            userId: gameState.userId,
+          }),
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ All puzzles regenerated:', result);
-        setReadyCategories(['person', 'place', 'thing']);
-        showFeedbackMsg(`✅ All ${result.generated} puzzles generated! Select a category.`, 'success');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
 
-        // Refresh after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        const error = await response.text();
-        console.error('Generate error:', error);
-        showFeedbackMsg('Error generating puzzles', 'error');
-      }
+        return await response.json();
+      }, 2, 2000);
+
+      console.log('✅ All puzzles regenerated:', result);
+      gameCache.clear();
+      setReadyCategories(['person', 'place', 'thing']);
+      showFeedbackMsg(`✅ All ${result.generated} puzzles generated! Select a category.`, 'success');
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
-      console.error('Error generating puzzles:', error);
-      showFeedbackMsg('Error generating puzzles', 'error');
+      logError('Generating all puzzles', error);
+      const errorDetails = handleError(error);
+      showFeedbackMsg(errorDetails.userMessage, 'error');
     } finally {
       setGeneratingPuzzles(false);
     }
@@ -358,6 +402,41 @@ export default function CipherGame() {
       hintsAvailable: prev.hintsAvailable + 5,
     }));
     showFeedbackMsg('Added 5 hints!', 'success');
+  };
+
+  const useHint = () => {
+    if (gameState.hintsAvailable <= 0) {
+      showFeedbackMsg('No hints available!', 'error');
+      return;
+    }
+
+    setGameState(prev => ({
+      ...prev,
+      hintsAvailable: prev.hintsAvailable - 1,
+      score: Math.max(0, prev.score - 50),
+    }));
+  };
+
+  const revealClueWithHint = () => {
+    if (gameState.hintsAvailable < 2) {
+      showFeedbackMsg('Need 2 hints to reveal a clue!', 'error');
+      return;
+    }
+
+    if (gameState.cluesRevealed.length >= gameState.allClues.length) {
+      showFeedbackMsg('All clues already revealed!', 'error');
+      return;
+    }
+
+    const newClueIndex = gameState.cluesRevealed.length;
+    setGameState(prev => ({
+      ...prev,
+      cluesRevealed: [...prev.cluesRevealed, prev.allClues[newClueIndex]],
+      hintsAvailable: prev.hintsAvailable - 2,
+      score: Math.max(0, prev.score - 100),
+    }));
+
+    showFeedbackMsg('Extra clue revealed!', 'success');
   };
 
   return (
@@ -464,6 +543,15 @@ export default function CipherGame() {
                 <div className="text-xl font-bold">{gameState.maxAttempts - gameState.attempts} left</div>
               </div>
             </div>
+
+            <HintSystem
+              currentAnswer={gameState.currentAnswer || ''}
+              cluesRevealed={gameState.cluesRevealed}
+              allClues={gameState.allClues}
+              hintsAvailable={gameState.hintsAvailable}
+              onHintUsed={useHint}
+              onRevealClue={revealClueWithHint}
+            />
 
             <div className="mb-8">
               <h3 className="text-2xl font-bold mb-4">Clues</h3>

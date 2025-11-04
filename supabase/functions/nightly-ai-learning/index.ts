@@ -13,17 +13,21 @@ async function analyzeAndLearn(supabase: any) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const { data: recentGuesses } = await supabase
-    .from("user_guesses")
-    .select("*")
-    .gte("created_at", sevenDaysAgo.toISOString())
-    .order("created_at", { ascending: false });
+  const [guessesResult, analyticsResult] = await Promise.all([
+    supabase
+      .from("user_guesses")
+      .select("*")
+      .gte("created_at", sevenDaysAgo.toISOString())
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("mystery_analytics")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(50)
+  ]);
 
-  const { data: analytics } = await supabase
-    .from("mystery_analytics")
-    .select("*")
-    .order("updated_at", { ascending: false })
-    .limit(50);
+  const recentGuesses = guessesResult.data;
+  const analytics = analyticsResult.data;
 
   if (!analytics || analytics.length === 0) {
     console.log("No data yet to analyze");
@@ -46,16 +50,29 @@ async function analyzeAndLearn(supabase: any) {
   };
 
   if (recentGuesses && recentGuesses.length > 0) {
-    const solves = recentGuesses.filter((g: any) => g.is_correct);
-    if (solves.length > 0) {
-      guessPatterns.averageCluesBeforeSolve =
-        solves.reduce((sum: number, g: any) => sum + g.clues_seen_count, 0) / solves.length;
+    const solves: any[] = [];
+    let earlyGuessers = 0;
+    let lateGuessers = 0;
+
+    for (const guess of recentGuesses) {
+      if (guess.is_correct) {
+        solves.push(guess);
+      }
+      if (guess.clues_seen_count <= 3) {
+        earlyGuessers++;
+      }
+      if (guess.clues_seen_count >= 6) {
+        lateGuessers++;
+      }
     }
 
-    guessPatterns.earlyGuessers = recentGuesses.filter((g: any) =>
-      g.clues_seen_count <= 3).length;
-    guessPatterns.lateGuessers = recentGuesses.filter((g: any) =>
-      g.clues_seen_count >= 6).length;
+    if (solves.length > 0) {
+      const totalClues = solves.reduce((sum: number, g: any) => sum + g.clues_seen_count, 0);
+      guessPatterns.averageCluesBeforeSolve = totalClues / solves.length;
+    }
+
+    guessPatterns.earlyGuessers = earlyGuessers;
+    guessPatterns.lateGuessers = lateGuessers;
   }
 
   const recommendations: any[] = [];

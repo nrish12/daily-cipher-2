@@ -120,7 +120,7 @@ async function recordGuessAnalytics(supabase: any, data: any) {
   const { mysteryId, userId, guess, isCorrect, cluesSeen, attemptNumber, timeElapsed } = data;
 
   try {
-    await supabase.from("user_guesses").insert({
+    const guessInsertPromise = supabase.from("user_guesses").insert({
       user_id: userId,
       mystery_id: mysteryId,
       guess_text: guess,
@@ -131,11 +131,14 @@ async function recordGuessAnalytics(supabase: any, data: any) {
       time_elapsed_ms: timeElapsed
     });
 
-    const { data: analytics } = await supabase
+    const analyticsPromise = supabase
       .from("mystery_analytics")
       .select("*")
       .eq("mystery_id", mysteryId)
       .maybeSingle();
+
+    const [, analyticsResult] = await Promise.all([guessInsertPromise, analyticsPromise]);
+    const analytics = analyticsResult.data;
 
     if (analytics) {
       const newAttempts = analytics.total_attempts + 1;
@@ -160,7 +163,7 @@ async function recordGuessAnalytics(supabase: any, data: any) {
       });
     }
 
-    for (let i = 0; i < cluesSeen.length; i++) {
+    const cluePromises = cluesSeen.map(async (clue: string, i: number) => {
       const { data: clueData } = await supabase
         .from("clue_effectiveness")
         .select("*")
@@ -169,7 +172,7 @@ async function recordGuessAnalytics(supabase: any, data: any) {
         .maybeSingle();
 
       if (clueData) {
-        await supabase
+        return supabase
           .from("clue_effectiveness")
           .update({
             times_revealed: clueData.times_revealed + 1,
@@ -177,15 +180,17 @@ async function recordGuessAnalytics(supabase: any, data: any) {
           })
           .eq("id", clueData.id);
       } else {
-        await supabase.from("clue_effectiveness").insert({
+        return supabase.from("clue_effectiveness").insert({
           mystery_id: mysteryId,
           clue_index: i,
-          clue_text: cluesSeen[i],
+          clue_text: clue,
           times_revealed: 1,
           led_to_solve: isCorrect && i === cluesSeen.length - 1 ? 1 : 0
         });
       }
-    }
+    });
+
+    await Promise.all(cluePromises);
 
     console.log("✅ Analytics recorded successfully");
   } catch (error) {

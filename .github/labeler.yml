@@ -1,16 +1,15 @@
 "area:frontend":
-  - "src/**"
-  - "public/**"
+  - changed-files:
+      - any-glob-to-any-file: ["src/**", "public/**"]
 
 "area:backend":
-  - "server.js"
-  - "utils/**"
-  - "supabase/**"
+  - changed-files:
+      - any-glob-to-any-file: ["server.js", "utils/**", "supabase/**"]
 
 "area:docs":
-  - "*.md"
-  - "docs/**"
+  - changed-files:
+      - any-glob-to-any-file: ["*.md", "docs/**"]
 
 "area:integration":
-  - "packages/**"
-  - "libs/**"
+  - changed-files:
+      - any-glob-to-any-file: ["packages/**", "libs/**"]
